@@ -255,6 +255,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = () => {
     setUser(null);
     localStorage.removeItem('currentUser');
+    // Force immediate redirect to home page
+    window.location.href = '/';
   };
 
   return (
