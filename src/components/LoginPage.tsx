@@ -120,7 +120,7 @@ export function LoginPage({ onLogin, onBackToHome, isLoading }: LoginPageProps) 
                 <p className="text-sm text-white/80">
                   <strong>Demo Credentials:</strong><br />
                   Company: TechCorp Solutions<br />
-                  Username: admin, finance, or hr<br />
+                  Username: admin, finance, hr, management, safety, employee, implmanager, logistics, operations, planning, projectmgr, siteeng, warehouse, procurement<br />
                   Password: password
                 </p>
               </div>

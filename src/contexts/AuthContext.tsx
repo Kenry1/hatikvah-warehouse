@@ -40,6 +40,96 @@ let mockUsers: User[] = [
     companyId: 'comp1',
     companyName: 'TechCorp Solutions',
     createdAt: '2024-01-01'
+  },
+  {
+    id: '5',
+    username: 'safety',
+    email: 'safety@techcorp.com',
+    role: 'Health and Safety',
+    companyId: 'comp1',
+    companyName: 'TechCorp Solutions',
+    createdAt: '2024-01-01'
+  },
+  {
+    id: '6',
+    username: 'employee',
+    email: 'employee@techcorp.com',
+    role: 'Employee',
+    companyId: 'comp1',
+    companyName: 'TechCorp Solutions',
+    createdAt: '2024-01-01'
+  },
+  {
+    id: '7',
+    username: 'implmanager',
+    email: 'implmanager@techcorp.com',
+    role: 'Implementation Manager',
+    companyId: 'comp1',
+    companyName: 'TechCorp Solutions',
+    createdAt: '2024-01-01'
+  },
+  {
+    id: '8',
+    username: 'logistics',
+    email: 'logistics@techcorp.com',
+    role: 'Logistics',
+    companyId: 'comp1',
+    companyName: 'TechCorp Solutions',
+    createdAt: '2024-01-01'
+  },
+  {
+    id: '9',
+    username: 'operations',
+    email: 'operations@techcorp.com',
+    role: 'Operations Manager',
+    companyId: 'comp1',
+    companyName: 'TechCorp Solutions',
+    createdAt: '2024-01-01'
+  },
+  {
+    id: '10',
+    username: 'planning',
+    email: 'planning@techcorp.com',
+    role: 'Planning',
+    companyId: 'comp1',
+    companyName: 'TechCorp Solutions',
+    createdAt: '2024-01-01'
+  },
+  {
+    id: '11',
+    username: 'projectmgr',
+    email: 'projectmgr@techcorp.com',
+    role: 'Project Manager',
+    companyId: 'comp1',
+    companyName: 'TechCorp Solutions',
+    createdAt: '2024-01-01'
+  },
+  {
+    id: '12',
+    username: 'siteeng',
+    email: 'siteeng@techcorp.com',
+    role: 'Site Engineer',
+    companyId: 'comp1',
+    companyName: 'TechCorp Solutions',
+    createdAt: '2024-01-01'
+  },
+  {
+    id: '13',
+    username: 'warehouse',
+    email: 'warehouse@techcorp.com',
+    role: 'Warehouse',
+    companyId: 'comp1',
+    companyName: 'TechCorp Solutions',
+    createdAt: '2024-01-01'
+  },
+  {
+    id: '14',
+    username: 'procurement',
+    email: 'procurement@techcorp.com',
+    role: 'Procurement',
+    companyId: 'comp1',
+    companyName: 'TechCorp Solutions',
+    createdAt: '2024-01-01'
   }
 ];
 
