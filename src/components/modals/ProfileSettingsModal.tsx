@@ -38,7 +38,7 @@ interface ProfileSettingsModalProps {
 export function ProfileSettingsModal({ open, onOpenChange }: ProfileSettingsModalProps) {
   const { theme, setTheme } = useTheme();
   const { toast } = useToast();
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   
   // Loading states
   const [isResettingPassword, setIsResettingPassword] = useState(false);
@@ -54,7 +54,7 @@ export function ProfileSettingsModal({ open, onOpenChange }: ProfileSettingsModa
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [username, setUsername] = useState(user?.username || '');
+  const [username, setUsername] = useState(profile?.username || '');
   const [bio, setBio] = useState('');
   const [dateOfBirth, setDateOfBirth] = useState('');
   const [twoFactorEnabled, setTwoFactorEnabled] = useState(false);

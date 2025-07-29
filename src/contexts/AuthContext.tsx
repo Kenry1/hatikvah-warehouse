@@ -1,266 +1,201 @@
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { AuthContextType, User, Company, CreateCompanyData } from '@/types/auth';
+import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { User, Session } from '@supabase/supabase-js';
+import { Database } from '@/integrations/supabase/types';
+
+type Profile = Database['public']['Tables']['profiles']['Row'];
+type Company = Database['public']['Tables']['companies']['Row'];
+
+interface CreateCompanyData {
+  companyName: string;
+  adminEmail: string;
+  adminUsername: string;
+  adminPassword: string;
+}
+
+interface AuthContextType {
+  user: User | null;
+  profile: Profile | null;
+  session: Session | null;
+  signUp: (email: string, password: string, userData: {
+    username: string;
+    first_name: string;
+    last_name: string;
+    company_id: string;
+    role: string;
+  }) => Promise<{ error: any }>;
+  signIn: (email: string, password: string) => Promise<{ error: any }>;
+  signOut: () => Promise<void>;
+  login: (companyName: string, username: string, password: string) => Promise<void>;
+  createCompany: (data: CreateCompanyData) => Promise<void>;
+  getCompanies: () => Company[];
+  logout: () => void;
+  isLoading: boolean;
+}
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Mock data for demo - in real app this would come from API
-let mockUsers: User[] = [
-  {
-    id: '1',
-    username: 'admin',
-    email: 'admin@techcorp.com',
-    role: 'ICT',
-    companyId: 'comp1',
-    companyName: 'TechCorp Solutions',
-    createdAt: '2024-01-01'
-  },
-  {
-    id: '2',
-    username: 'finance',
-    email: 'finance@techcorp.com',
-    role: 'Finance',
-    companyId: 'comp1',
-    companyName: 'TechCorp Solutions',
-    createdAt: '2024-01-01'
-  },
-  {
-    id: '3',
-    username: 'hr',
-    email: 'hr@techcorp.com',
-    role: 'HR',
-    companyId: 'comp1',
-    companyName: 'TechCorp Solutions',
-    createdAt: '2024-01-01'
-  },
-  {
-    id: '4',
-    username: 'management',
-    email: 'management@techcorp.com',
-    role: 'Management',
-    companyId: 'comp1',
-    companyName: 'TechCorp Solutions',
-    createdAt: '2024-01-01'
-  },
-  {
-    id: '5',
-    username: 'safety',
-    email: 'safety@techcorp.com',
-    role: 'Health and Safety',
-    companyId: 'comp1',
-    companyName: 'TechCorp Solutions',
-    createdAt: '2024-01-01'
-  },
-  {
-    id: '6',
-    username: 'employee',
-    email: 'employee@techcorp.com',
-    role: 'Employee',
-    companyId: 'comp1',
-    companyName: 'TechCorp Solutions',
-    createdAt: '2024-01-01'
-  },
-  {
-    id: '7',
-    username: 'implmanager',
-    email: 'implmanager@techcorp.com',
-    role: 'Implementation Manager',
-    companyId: 'comp1',
-    companyName: 'TechCorp Solutions',
-    createdAt: '2024-01-01'
-  },
-  {
-    id: '8',
-    username: 'logistics',
-    email: 'logistics@techcorp.com',
-    role: 'Logistics',
-    companyId: 'comp1',
-    companyName: 'TechCorp Solutions',
-    createdAt: '2024-01-01'
-  },
-  {
-    id: '9',
-    username: 'operations',
-    email: 'operations@techcorp.com',
-    role: 'Operations Manager',
-    companyId: 'comp1',
-    companyName: 'TechCorp Solutions',
-    createdAt: '2024-01-01'
-  },
-  {
-    id: '10',
-    username: 'planning',
-    email: 'planning@techcorp.com',
-    role: 'Planning',
-    companyId: 'comp1',
-    companyName: 'TechCorp Solutions',
-    createdAt: '2024-01-01'
-  },
-  {
-    id: '11',
-    username: 'projectmgr',
-    email: 'projectmgr@techcorp.com',
-    role: 'Project Manager',
-    companyId: 'comp1',
-    companyName: 'TechCorp Solutions',
-    createdAt: '2024-01-01'
-  },
-  {
-    id: '12',
-    username: 'siteeng',
-    email: 'siteeng@techcorp.com',
-    role: 'Site Engineer',
-    companyId: 'comp1',
-    companyName: 'TechCorp Solutions',
-    createdAt: '2024-01-01'
-  },
-  {
-    id: '13',
-    username: 'warehouse',
-    email: 'warehouse@techcorp.com',
-    role: 'Warehouse',
-    companyId: 'comp1',
-    companyName: 'TechCorp Solutions',
-    createdAt: '2024-01-01'
-  },
-  {
-    id: '14',
-    username: 'procurement',
-    email: 'procurement@techcorp.com',
-    role: 'Procurement',
-    companyId: 'comp1',
-    companyName: 'TechCorp Solutions',
-    createdAt: '2024-01-01'
-  }
-];
-
-let mockCompanies: Company[] = [
-  {
-    id: 'comp1',
-    name: 'TechCorp Solutions',
-    createdAt: '2024-01-01',
-    adminUserId: '1'
-  },
-  {
-    id: 'comp2',
-    name: 'Global Logistics Inc',
-    createdAt: '2024-01-01',
-    adminUserId: '5'
-  },
-  {
-    id: 'comp3',
-    name: 'SafetyFirst Industries',
-    createdAt: '2024-01-01',
-    adminUserId: '6'
-  },
-  {
-    id: 'comp4',
-    name: 'Innovation Labs',
-    createdAt: '2024-01-01',
-    adminUserId: '7'
-  }
-];
-
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Check for stored user on mount
-    const storedUser = localStorage.getItem('currentUser');
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
-    }
+    // Set up auth state listener
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        setSession(session);
+        setUser(session?.user ?? null);
+        
+        if (session?.user) {
+          // Fetch user profile
+          setTimeout(async () => {
+            const { data: profile } = await supabase
+              .from('profiles')
+              .select('*')
+              .eq('id', session.user.id)
+              .single();
+            setProfile(profile);
+          }, 0);
+        } else {
+          setProfile(null);
+        }
+        
+        setIsLoading(false);
+      }
+    );
+
+    // Check for existing session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      setUser(session?.user ?? null);
+      
+      if (session?.user) {
+        supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', session.user.id)
+          .single()
+          .then(({ data: profile }) => {
+            setProfile(profile);
+            setIsLoading(false);
+          });
+      } else {
+        setIsLoading(false);
+      }
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
-  const login = async (companyName: string, username: string, password: string) => {
-    setIsLoading(true);
-    try {
-      // Mock authentication - in real app this would be API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      const foundUser = mockUsers.find(
-        u => u.companyName === companyName && u.username === username
-      );
-      
-      if (foundUser && password === 'password') {
-        setUser(foundUser);
-        localStorage.setItem('currentUser', JSON.stringify(foundUser));
-      } else {
-        throw new Error('Invalid credentials');
+  const signUp = async (email: string, password: string, userData: {
+    username: string;
+    first_name: string;
+    last_name: string;
+    company_id: string;
+    role: string;
+  }) => {
+    const redirectUrl = `${window.location.origin}/`;
+    
+    const { error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        emailRedirectTo: redirectUrl,
+        data: userData
       }
-    } finally {
-      setIsLoading(false);
+    });
+    
+    return { error };
+  };
+
+  const signIn = async (email: string, password: string) => {
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password
+    });
+    
+    return { error };
+  };
+
+  const signOut = async () => {
+    await supabase.auth.signOut();
+  };
+
+  const getCompanies = (): Company[] => {
+    // Mock companies for compatibility
+    return [
+      { id: '11111111-1111-1111-1111-111111111111', name: 'TechCorp Solutions', created_at: '2024-01-01', updated_at: '2024-01-01' },
+      { id: '22222222-2222-2222-2222-222222222222', name: 'BuildMaster Construction', created_at: '2024-01-01', updated_at: '2024-01-01' },
+      { id: '33333333-3333-3333-3333-333333333333', name: 'GlobalNet Services', created_at: '2024-01-01', updated_at: '2024-01-01' }
+    ];
+  };
+
+  const login = async (companyName: string, username: string, password: string) => {
+    // Find user by company and username, then sign in with email
+    const companies = getCompanies();
+    const company = companies.find(c => c.name === companyName);
+    
+    if (!company) {
+      throw new Error('Company not found');
+    }
+    
+    // Create email from username and company (for demo purposes)
+    const email = `${username}@${companyName.toLowerCase().replace(/\s+/g, '')}.com`;
+    
+    const { error } = await signIn(email, password);
+    if (error) {
+      throw new Error('Invalid credentials');
     }
   };
 
   const createCompany = async (data: CreateCompanyData) => {
-    setIsLoading(true);
-    try {
-      // Mock company creation - in real app this would be API call
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      // Check if company name already exists
-      const existingCompany = mockCompanies.find(c => c.name === data.companyName);
-      if (existingCompany) {
-        throw new Error('Company name already exists');
-      }
-      
-      // Check if admin username already exists
-      const existingUser = mockUsers.find(u => u.username === data.adminUsername);
-      if (existingUser) {
-        throw new Error('Username already exists');
-      }
-      
-      // Generate IDs
-      const companyId = `comp${mockCompanies.length + 1}`;
-      const userId = `${mockUsers.length + 1}`;
-      const now = new Date().toISOString().split('T')[0];
-      
-      // Create company
-      const newCompany: Company = {
-        id: companyId,
-        name: data.companyName,
-        createdAt: now,
-        adminUserId: userId
-      };
-      
-      // Create admin user
-      const newUser: User = {
-        id: userId,
-        username: data.adminUsername,
-        email: data.adminEmail,
-        role: 'ICT',
-        companyId: companyId,
-        companyName: data.companyName,
-        createdAt: now
-      };
-      
-      // Add to mock data
-      mockCompanies.push(newCompany);
-      mockUsers.push(newUser);
-      
-      // Auto-login the new admin user
-      setUser(newUser);
-      localStorage.setItem('currentUser', JSON.stringify(newUser));
-      
-    } finally {
-      setIsLoading(false);
+    // First create company in database
+    const { data: company, error: companyError } = await supabase
+      .from('companies')
+      .insert([{ name: data.companyName }])
+      .select()
+      .single();
+    
+    if (companyError) {
+      throw new Error('Failed to create company');
+    }
+    
+    // Then create admin user
+    const { error } = await signUp(data.adminEmail, data.adminPassword, {
+      username: data.adminUsername,
+      first_name: '',
+      last_name: '',
+      company_id: company.id,
+      role: 'ICT'
+    });
+    
+    if (error) {
+      throw new Error('Failed to create admin user');
     }
   };
 
-  const getCompanies = () => {
-    return mockCompanies;
+  const logout = () => {
+    signOut();
   };
 
-  const logout = () => {
-    setUser(null);
-    localStorage.removeItem('currentUser');
-    // Force immediate redirect to home page
-    window.location.href = '/';
+  const value = {
+    user,
+    profile,
+    session,
+    signUp,
+    signIn,
+    signOut,
+    login,
+    createCompany,
+    getCompanies,
+    logout,
+    isLoading
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, createCompany, getCompanies, logout, isLoading }}>
+    <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
   );
