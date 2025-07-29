@@ -151,28 +151,45 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const createCompany = async (data: CreateCompanyData) => {
-    // First create company in database
-    const { data: company, error: companyError } = await supabase
-      .from('companies')
-      .insert([{ name: data.companyName }])
-      .select()
-      .single();
-    
-    if (companyError) {
-      throw new Error('Failed to create company');
-    }
-    
-    // Then create admin user
-    const { error } = await signUp(data.adminEmail, data.adminPassword, {
-      username: data.adminUsername,
-      first_name: '',
-      last_name: '',
-      company_id: company.id,
-      role: 'ICT'
-    });
-    
-    if (error) {
-      throw new Error('Failed to create admin user');
+    try {
+      console.log('Creating company with data:', data);
+      
+      // First create company in database
+      const { data: company, error: companyError } = await supabase
+        .from('companies')
+        .insert([{ name: data.companyName }])
+        .select()
+        .single();
+      
+      console.log('Company creation result:', { company, error: companyError });
+      
+      if (companyError) {
+        console.error('Company creation error:', companyError);
+        throw new Error(`Failed to create company: ${companyError.message}`);
+      }
+      
+      console.log('Created company:', company);
+      
+      // Then create admin user
+      const { error } = await signUp(data.adminEmail, data.adminPassword, {
+        username: data.adminUsername,
+        first_name: '',
+        last_name: '',
+        company_id: company.id,
+        role: 'ICT'
+      });
+      
+      console.log('User creation result:', { error });
+      
+      if (error) {
+        console.error('User creation error:', error);
+        throw new Error(`Failed to create admin user: ${error.message}`);
+      }
+      
+      console.log('Company and user created successfully');
+    } catch (error) {
+      console.error('createCompany failed:', error);
+      throw error;
     }
   };
 
