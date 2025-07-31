@@ -188,10 +188,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.log('Found user profile:', userProfile);
 
       // Sign in with email and password
+      console.log('Attempting signIn with email:', userProfile.email);
       const { error } = await signIn(userProfile.email, password);
       if (error) {
-        console.error('Sign in error:', error);
-        throw new Error('Invalid credentials');
+        console.error('Sign in error details:', error);
+        if (error.message.includes('Invalid login credentials')) {
+          throw new Error('Invalid password for this user');
+        }
+        throw new Error(`Authentication failed: ${error.message}`);
       }
 
       console.log('Login successful');
