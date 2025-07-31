@@ -690,6 +690,15 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      find_user_for_login: {
+        Args: { p_username: string; p_company_id: string }
+        Returns: {
+          id: string
+          email: string
+          username: string
+          company_id: string
+        }[]
+      }
       get_user_company_id: {
         Args: Record<PropertyKey, never>
         Returns: string
