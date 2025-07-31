@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -23,9 +22,6 @@ export function LoginPage({ onLogin, onBackToHome, isLoading }: LoginPageProps) 
     password: ''
   });
   const { toast } = useToast();
-  const companies = getCompanies();
-
-  console.log('Available companies:', companies);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -40,17 +36,11 @@ export function LoginPage({ onLogin, onBackToHome, isLoading }: LoginPageProps) 
     }
 
     try {
-      console.log('Submitting login form:', formData);
       await onLogin(formData.companyName, formData.username, formData.password);
-      toast({
-        title: "Login Successful",
-        description: "Welcome back!",
-      });
     } catch (error) {
-      console.error('Login error:', error);
       toast({
         title: "Login Failed",
-        description: error instanceof Error ? error.message : "Invalid company name, username, or password.",
+        description: "Invalid company name, username, or password.",
         variant: "destructive"
       });
     }
@@ -91,18 +81,12 @@ export function LoginPage({ onLogin, onBackToHome, isLoading }: LoginPageProps) 
                   <SelectTrigger className="bg-white/10 border-white/30 text-white">
                     <SelectValue placeholder="Select your company" />
                   </SelectTrigger>
-                  <SelectContent className="bg-white">
-                    {companies.length === 0 ? (
-                      <SelectItem value="no-companies" disabled>
-                        No companies available
+                  <SelectContent>
+                    {getCompanies().map((company) => (
+                      <SelectItem key={company.id} value={company.name}>
+                        {company.name}
                       </SelectItem>
-                    ) : (
-                      companies.map((company) => (
-                        <SelectItem key={company.id} value={company.name}>
-                          {company.name}
-                        </SelectItem>
-                      ))
-                    )}
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -134,8 +118,10 @@ export function LoginPage({ onLogin, onBackToHome, isLoading }: LoginPageProps) 
 
               <div className="bg-accent/20 p-3 rounded-lg">
                 <p className="text-sm text-white/80">
-                  <strong>Note:</strong> Create a new company first if you don't see your company in the dropdown. 
-                  Use the same email and username you plan to sign in with.
+                  <strong>Demo Credentials:</strong><br />
+                  Company: TechCorp Solutions<br />
+                  Username: admin, finance, hr, management, safety, employee, implmanager, logistics, operations, planning, projectmgr, siteeng, warehouse, procurement<br />
+                  Password: password
                 </p>
               </div>
               

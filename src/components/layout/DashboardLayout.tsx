@@ -11,16 +11,16 @@ interface DashboardLayoutProps {
 }
 
 export function DashboardLayout({ children }: DashboardLayoutProps) {
-  const { user, profile } = useAuth();
+  const { user } = useAuth();
 
-  if (!user || !profile) {
+  if (!user) {
     return null;
   }
 
   return (
     <SidebarProvider defaultOpen={true}>
       <div className="min-h-screen flex w-full">
-        <AppSidebar userRole={profile.role} />
+        <AppSidebar userRole={user.role} />
         
         <SidebarInset className="flex-1">
           <AppNavbar />

@@ -17,7 +17,7 @@ interface BaseDashboardProps {
 }
 
 export function BaseDashboard({ title, description, children, stats }: BaseDashboardProps) {
-  const { user, profile } = useAuth();
+  const { user } = useAuth();
 
   const getStatColor = (color?: string) => {
     switch (color) {
@@ -43,7 +43,7 @@ export function BaseDashboard({ title, description, children, stats }: BaseDashb
             {user?.role}
           </Badge>
           <Badge variant="outline">
-            Company Operations
+            {user?.companyName}
           </Badge>
         </div>
       </div>

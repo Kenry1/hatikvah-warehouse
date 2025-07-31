@@ -15,12 +15,12 @@ import { useAuth } from '@/contexts/AuthContext';
 import { ProfileSettingsModal } from '@/components/modals/ProfileSettingsModal';
 
 export function AppNavbar() {
-  const { user, profile, logout } = useAuth();
+  const { user, logout } = useAuth();
   const [showProfileSettings, setShowProfileSettings] = useState(false);
 
-  if (!user || !profile) return null;
+  if (!user) return null;
 
-  const userInitials = profile.username.charAt(0).toUpperCase();
+  const userInitials = user.username.charAt(0).toUpperCase();
   const roleColors: Record<string, string> = {
     'ICT': 'bg-blue-500',
     'Finance': 'bg-green-500',
@@ -43,7 +43,7 @@ export function AppNavbar() {
             </div>
             <div>
               <h1 className="text-lg font-semibold">Operations Platform</h1>
-              <p className="text-xs text-muted-foreground">Company Operations</p>
+              <p className="text-xs text-muted-foreground">{user.companyName}</p>
             </div>
           </div>
         </div>
@@ -63,13 +63,13 @@ export function AppNavbar() {
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="flex items-center gap-3 h-auto py-2 px-3">
                 <Avatar className="h-8 w-8">
-                  <AvatarFallback className={`${roleColors[profile.role] || 'bg-primary'} text-white text-sm`}>
+                  <AvatarFallback className={`${roleColors[user.role] || 'bg-primary'} text-white text-sm`}>
                     {userInitials}
                   </AvatarFallback>
                 </Avatar>
                 <div className="text-left">
-                  <p className="text-sm font-medium">{profile.username}</p>
-                  <p className="text-xs text-muted-foreground">{profile.role}</p>
+                  <p className="text-sm font-medium">{user.username}</p>
+                  <p className="text-xs text-muted-foreground">{user.role}</p>
                 </div>
               </Button>
             </DropdownMenuTrigger>
@@ -77,7 +77,7 @@ export function AppNavbar() {
             <DropdownMenuContent align="end" className="w-56">
               <DropdownMenuLabel>
                 <div>
-                  <p className="font-medium">{profile.username}</p>
+                  <p className="font-medium">{user.username}</p>
                   <p className="text-xs text-muted-foreground">{user.email}</p>
                 </div>
               </DropdownMenuLabel>
