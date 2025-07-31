@@ -167,12 +167,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       console.log('Found company:', company);
 
-      // Find user by username and company_id
+      // Find user by username and company_id using the special function
       const { data: profiles, error: profileError } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('username', username)
-        .eq('company_id', company.id);
+        .rpc('find_user_for_login', {
+          p_username: username,
+          p_company_id: company.id
+        });
 
       if (profileError) {
         console.error('Error finding user profile:', profileError);
