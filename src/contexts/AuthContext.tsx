@@ -1,3 +1,4 @@
+
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { User, Session } from '@supabase/supabase-js';
@@ -40,11 +41,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [companies, setCompanies] = useState<Company[]>([]);
+
+  // Fetch companies from database
+  const fetchCompanies = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('companies')
+        .select('*')
+        .order('name');
+      
+      if (error) {
+        console.error('Error fetching companies:', error);
+        return;
+      }
+      
+      console.log('Fetched companies:', data);
+      setCompanies(data || []);
+    } catch (error) {
+      console.error('Error in fetchCompanies:', error);
+    }
+  };
 
   useEffect(() => {
     // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
+        console.log('Auth state changed:', event, session);
         setSession(session);
         setUser(session?.user ?? null);
         
@@ -56,6 +79,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               .select('*')
               .eq('id', session.user.id)
               .single();
+            console.log('Fetched profile:', profile);
             setProfile(profile);
           }, 0);
         } else {
@@ -85,6 +109,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setIsLoading(false);
       }
     });
+
+    // Fetch companies on component mount
+    fetchCompanies();
 
     return () => subscription.unsubscribe();
   }, []);
@@ -124,29 +151,53 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const getCompanies = (): Company[] => {
-    // Mock companies for compatibility
-    return [
-      { id: '11111111-1111-1111-1111-111111111111', name: 'TechCorp Solutions', created_at: '2024-01-01', updated_at: '2024-01-01' },
-      { id: '22222222-2222-2222-2222-222222222222', name: 'BuildMaster Construction', created_at: '2024-01-01', updated_at: '2024-01-01' },
-      { id: '33333333-3333-3333-3333-333333333333', name: 'GlobalNet Services', created_at: '2024-01-01', updated_at: '2024-01-01' }
-    ];
+    return companies;
   };
 
   const login = async (companyName: string, username: string, password: string) => {
-    // Find user by company and username, then sign in with email
-    const companies = getCompanies();
-    const company = companies.find(c => c.name === companyName);
-    
-    if (!company) {
-      throw new Error('Company not found');
-    }
-    
-    // Create email from username and company (for demo purposes)
-    const email = `${username}@${companyName.toLowerCase().replace(/\s+/g, '')}.com`;
-    
-    const { error } = await signIn(email, password);
-    if (error) {
-      throw new Error('Invalid credentials');
+    try {
+      console.log('Attempting login with:', { companyName, username });
+      
+      // Find the company first
+      const company = companies.find(c => c.name === companyName);
+      if (!company) {
+        console.error('Company not found:', companyName);
+        throw new Error('Company not found');
+      }
+
+      console.log('Found company:', company);
+
+      // Find user by username and company_id
+      const { data: profiles, error: profileError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('username', username)
+        .eq('company_id', company.id);
+
+      if (profileError) {
+        console.error('Error finding user profile:', profileError);
+        throw new Error('Error finding user');
+      }
+
+      if (!profiles || profiles.length === 0) {
+        console.error('User not found with username:', username, 'in company:', companyName);
+        throw new Error('User not found');
+      }
+
+      const userProfile = profiles[0];
+      console.log('Found user profile:', userProfile);
+
+      // Sign in with email and password
+      const { error } = await signIn(userProfile.email, password);
+      if (error) {
+        console.error('Sign in error:', error);
+        throw new Error('Invalid credentials');
+      }
+
+      console.log('Login successful');
+    } catch (error) {
+      console.error('Login failed:', error);
+      throw error;
     }
   };
 
@@ -185,6 +236,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         console.error('User creation error:', error);
         throw new Error(`Failed to create admin user: ${error.message}`);
       }
+      
+      // Refresh companies list
+      await fetchCompanies();
       
       console.log('Company and user created successfully');
     } catch (error) {
