@@ -22,13 +22,14 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
       <div className="min-h-screen flex w-full">
         <AppSidebar userRole={user.role} />
         
-        <SidebarInset className="flex-1">
+        <SidebarInset className="flex-1"> {/* SidebarInset is the main content area */}
           <AppNavbar />
           
-          <main className="flex-1 p-6 space-y-6">
+          {/* Content directly inside SidebarInset, removed redundant <main> tag */}
+          <div className="flex-1 p-6 space-y-6 overflow-auto">
             <BreadcrumbNav />
             {children}
-          </main>
+          </div>
         </SidebarInset>
       </div>
     </SidebarProvider>

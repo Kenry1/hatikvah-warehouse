@@ -141,7 +141,7 @@ export function DataTable({
       </div>
 
       {/* Table */}
-      <div className="rounded-md border">
+      <div className="rounded-md border overflow-x-auto"> {/* Added overflow-x-auto here */}
         <Table>
           <TableHeader>
             <TableRow>

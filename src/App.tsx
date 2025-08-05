@@ -2,7 +2,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Outlet } from "react-router-dom";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import { Dashboard } from "./pages/Dashboard";
@@ -12,7 +12,11 @@ import FinanceRequests from "./pages/FinanceRequests";
 import ITTickets from "./pages/ITTickets";
 import SafetyReports from "./pages/SafetyReports";
 import EmployeeDirectory from "./pages/EmployeeDirectory";
+import UserManagement from "./pages/UserManagement"; 
+import HouseAttendance from "./pages/HouseAttendance"; // Import the new HouseAttendance component
+import { FieldTripAlert } from "./pages/FieldTripAlert"; // Import the new FieldTripAlert component
 import { RouteGuard } from "./components/navigation/RouteGuard";
+import { DashboardLayout } from "./components/layout/DashboardLayout";
 
 const queryClient = new QueryClient();
 
@@ -28,80 +32,67 @@ const App = () => (
               <Index />
             </RouteGuard>
           } />
-          <Route path="/dashboard" element={
-            <RouteGuard>
-              <Dashboard />
-            </RouteGuard>
-          } />
-          {/* Core application pages - all require authentication */}
-          <Route path="/vehicles" element={
-            <RouteGuard>
-              <VehicleManagement />
-            </RouteGuard>
-          } />
-          <Route path="/leave-requests" element={
-            <RouteGuard>
-              <LeaveRequests />
-            </RouteGuard>
-          } />
-          <Route path="/finance-requests" element={
-            <RouteGuard>
-              <FinanceRequests />
-            </RouteGuard>
-          } />
-          <Route path="/it-tickets" element={
-            <RouteGuard>
-              <ITTickets />
-            </RouteGuard>
-          } />
-          <Route path="/safety-reports" element={
-            <RouteGuard>
-              <SafetyReports />
-            </RouteGuard>
-          } />
-          <Route path="/employees" element={
-            <RouteGuard>
-              <EmployeeDirectory />
-            </RouteGuard>
-          } />
           
-          {/* Department-specific routes - all require authentication */}
-          <Route path="/field-trip-approvals" element={<RouteGuard><Dashboard /></RouteGuard>} />
-          <Route path="/employee-analytics" element={<RouteGuard><Dashboard /></RouteGuard>} />
-          <Route path="/vehicle-inspections" element={<RouteGuard><Dashboard /></RouteGuard>} />
-          <Route path="/safety-equipment" element={<RouteGuard><Dashboard /></RouteGuard>} />
-          <Route path="/compliance-tracking" element={<RouteGuard><Dashboard /></RouteGuard>} />
-          <Route path="/vehicle-management" element={<RouteGuard><Dashboard /></RouteGuard>} />
-          <Route path="/service-calendar" element={<RouteGuard><Dashboard /></RouteGuard>} />
-          <Route path="/document-management" element={<RouteGuard><Dashboard /></RouteGuard>} />
-          <Route path="/project-dashboard" element={<RouteGuard><Dashboard /></RouteGuard>} />
-          <Route path="/inventory-overview" element={<RouteGuard><Dashboard /></RouteGuard>} />
-          <Route path="/vehicle-status" element={<RouteGuard><Dashboard /></RouteGuard>} />
-          
-          {/* Management department routes */}
-          <Route path="/executive-dashboard" element={<RouteGuard><Dashboard /></RouteGuard>} />
-          <Route path="/department-analytics" element={<RouteGuard><Dashboard /></RouteGuard>} />
-          <Route path="/performance-metrics" element={<RouteGuard><Dashboard /></RouteGuard>} />
-          <Route path="/resource-allocation" element={<RouteGuard><Dashboard /></RouteGuard>} />
-          
-          {/* Additional role-specific routes */}
-          <Route path="/user-management" element={<RouteGuard><Dashboard /></RouteGuard>} />
-          <Route path="/settings" element={<RouteGuard><Dashboard /></RouteGuard>} />
-          <Route path="/finance-approvals" element={<RouteGuard><Dashboard /></RouteGuard>} />
-          <Route path="/warehouse-inventory" element={<RouteGuard><Dashboard /></RouteGuard>} />
-          <Route path="/procurement-resources" element={<RouteGuard><Dashboard /></RouteGuard>} />
-          <Route path="/leave-management" element={<RouteGuard><Dashboard /></RouteGuard>} />
-          <Route path="/unified-approvals" element={<RouteGuard><Dashboard /></RouteGuard>} />
-          <Route path="/project-tracking" element={<RouteGuard><Dashboard /></RouteGuard>} />
-          <Route path="/vehicle-creation" element={<RouteGuard><Dashboard /></RouteGuard>} />
-          <Route path="/material-requests" element={<RouteGuard><Dashboard /></RouteGuard>} />
-          <Route path="/material-creation" element={<RouteGuard><Dashboard /></RouteGuard>} />
-          <Route path="/approved-requests" element={<RouteGuard><Dashboard /></RouteGuard>} />
-          <Route path="/analytics" element={<RouteGuard><Dashboard /></RouteGuard>} />
-          <Route path="/admin" element={<RouteGuard><Dashboard /></RouteGuard>} />
-          <Route path="/supplier-management" element={<RouteGuard><Dashboard /></RouteGuard>} />
-          <Route path="/supply-rates" element={<RouteGuard><Dashboard /></RouteGuard>} />
-          <Route path="/reorder-alerts" element={<RouteGuard><Dashboard /></RouteGuard>} />
+          {/* Parent Route for Authenticated Layout */}
+          <Route 
+            element={
+              <RouteGuard>
+                <DashboardLayout>
+                  <Outlet /> {/* Renders child routes here */}
+                </DashboardLayout>
+              </RouteGuard>
+            }
+          >
+            <Route path="/dashboard" element={<Dashboard />} />
+            {/* Core application pages */}
+            <Route path="/vehicles" element={<VehicleManagement />} />
+            <Route path="/leave-requests" element={<LeaveRequests />} />
+            <Route path="/finance-requests" element={<FinanceRequests />} />
+            <Route path="/it-tickets" element={<ITTickets />} />
+            <Route path="/safety-reports" element={<SafetyReports />} />
+            <Route path="/employees" element={<EmployeeDirectory />} />
+            
+            {/* Department-specific routes */}
+            <Route path="/field-trip-approvals" element={<Dashboard />} />
+            <Route path="/employee-analytics" element={<Dashboard />} />
+            <Route path="/vehicle-inspections" element={<Dashboard />} />
+            <Route path="/safety-equipment" element={<Dashboard />} />
+            <Route path="/compliance-tracking" element={<Dashboard />} />
+            <Route path="/vehicle-management" element={<Dashboard />} />
+            <Route path="/service-calendar" element={<Dashboard />} />
+            <Route path="/document-management" element={<Dashboard />} />
+            <Route path="/project-dashboard" element={<Dashboard />} />
+            <Route path="/inventory-overview" element={<Dashboard />} />
+            <Route path="/vehicle-status" element={<Dashboard />} />
+            
+            {/* Management department routes */}
+            <Route path="/executive-dashboard" element={<Dashboard />} />
+            <Route path="/department-analytics" element={<Dashboard />} />
+            <Route path="/performance-metrics" element={<Dashboard />} />
+            <Route path="/resource-allocation" element={<Dashboard />} />
+            
+            {/* Additional role-specific routes */}
+            <Route path="/user-management" element={<UserManagement />} />
+            <Route path="/settings" element={<Dashboard />} />
+            <Route path="/finance-approvals" element={<Dashboard />} />
+            <Route path="/warehouse-inventory" element={<Dashboard />} />
+            <Route path="/procurement-resources" element={<Dashboard />} />
+            <Route path="/leave-management" element={<Dashboard />} />
+            <Route path="/unified-approvals" element={<Dashboard />} />
+            <Route path="/project-tracking" element={<Dashboard />} />
+            <Route path="/vehicle-creation" element={<Dashboard />} />
+            <Route path="/material-requests" element={<Dashboard />} />
+            <Route path="/material-creation" element={<Dashboard />} />
+            <Route path="/approved-requests" element={<Dashboard />} />
+            <Route path="/analytics" element={<Dashboard />} />
+            <Route path="/admin" element={<Dashboard />} />
+            <Route path="/supplier-management" element={<Dashboard />} />
+            <Route path="/supply-rates" element={<Dashboard />} />
+            <Route path="/reorder-alerts" element={<Dashboard />} />
+            <Route path="/attendance/house" element={<HouseAttendance />} />
+            <Route path="/field-trip-alert" element={<FieldTripAlert />} />
+          </Route>
+
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

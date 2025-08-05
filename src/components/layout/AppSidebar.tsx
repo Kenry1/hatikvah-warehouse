@@ -11,6 +11,11 @@ import {
   useSidebar,
 } from '@/components/ui/sidebar';
 import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger
+} from '@/components/ui/collapsible';
+import {
   Truck,
   Calendar,
   DollarSign,
@@ -43,22 +48,27 @@ import {
   Target,
   Monitor,
   BookOpen,
-  Cog
+  Cog,
+  ChevronDown
 } from 'lucide-react';
 import { UserRole } from '@/types/auth';
 import { Badge } from '@/components/ui/badge';
+import { useState } from 'react';
+import { cn } from '@/lib/utils'; // Import cn utility
 
 interface AppSidebarProps {
   userRole: UserRole;
+  className?: string; // Added className prop
 }
 
 // Navigation item type
 interface NavigationItem {
   title: string;
-  url: string;
+  url?: string; // url is now optional
   icon: any;
   badge?: string;
   description?: string;
+  subItems?: NavigationItem[]; // New property for sub-menu items
 }
 
 interface NavigationGroup {
@@ -71,8 +81,17 @@ const getNavigationStructure = (role: UserRole): NavigationGroup[] => {
   // Common items available to all roles
   const commonItems: NavigationItem[] = [
     { title: 'Vehicle Management', url: '/vehicles', icon: Truck, description: 'Fleet and vehicle operations' },
-    { title: 'Leave Request', url: '/leave-requests', icon: Calendar, description: 'Submit and track leave requests' },
-    { title: 'Finance Request', url: '/finance-requests', icon: DollarSign, description: 'Financial approvals and requests' },
+    {
+      title: 'Attendance',
+      icon: Calendar,
+      description: 'Manage employee attendance and leave',
+      subItems: [
+        { title: 'House Attendance', url: '/attendance/house', icon: Home, description: 'Track daily attendance' },
+        { title: 'Leave Query', url: '/leave-requests', icon: BookOpen, description: 'manage your leave requests' },
+        { title: 'Field Trip Alert', url: '/field-trip-alert', icon: MapPin, description: 'Alert your field trips' },
+      ],
+    },
+    { title: 'Finance Request', url: '/finance-requests', icon: DollarSign, description: 'Financial requests' },
     { title: 'IT Ticket Creation', url: '/it-tickets', icon: Ticket, description: 'Technical support tickets' },
     { title: 'Safety Reports', url: '/safety-reports', icon: Shield, description: 'Safety incidents and compliance' },
     { title: 'Employee Directory', url: '/employees', icon: Users, description: 'Team directory and status' },
@@ -258,19 +277,25 @@ const getNavigationStructure = (role: UserRole): NavigationGroup[] => {
   ];
 };
 
-export function AppSidebar({ userRole }: AppSidebarProps) {
+export function AppSidebar({ userRole, className }: AppSidebarProps) {
   const { state } = useSidebar();
   const location = useLocation();
   const currentPath = location.pathname;
 
   const navigationGroups = getNavigationStructure(userRole);
-  const isActive = (path: string) => currentPath === path;
+  // const isActive = (path: string) => currentPath === path; // No longer directly used for top-level NavLink
   const isCollapsed = state === 'collapsed';
+
+  // Function to check if any sub-item is active
+  const hasActiveSubItem = (subItems: NavigationItem[]) => {
+    return subItems.some(subItem => currentPath === subItem.url);
+  };
 
   return (
     <Sidebar
-      className="bg-sidebar transition-all duration-300 border-r border-sidebar-border"
-      collapsible="icon"
+      className={cn("bg-sidebar transition-all duration-300 border-r border-sidebar-border", className)}
+      collapsed={isCollapsed}
+      variant="inset" // Added variant="inset" here
     >
       <SidebarContent className="bg-sidebar">
         {navigationGroups.map((group, groupIndex) => (
@@ -283,55 +308,123 @@ export function AppSidebar({ userRole }: AppSidebarProps) {
               <SidebarMenu className="space-y-1">
                 {group.items.map((item) => (
                   <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton asChild>
-                      <NavLink
-                        to={item.url}
-                        className={({ isActive: linkIsActive }) =>
-                          `flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 group relative ${
-                            linkIsActive
-                              ? 'bg-sidebar-accent text-sidebar-accent-foreground shadow-sm'
-                              : 'text-sidebar-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground'
-                          }`
-                        }
-                      >
-                        <item.icon className="h-4 w-4 flex-shrink-0" />
-                        
-                        {!isCollapsed && (
-                          <>
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center justify-between">
+                    {item.subItems ? (
+                      <Collapsible defaultOpen={hasActiveSubItem(item.subItems)}>
+                        <CollapsibleTrigger asChild>
+                          <SidebarMenuButton 
+                            className={`flex items-center justify-between w-full px-3 py-2.5 rounded-lg transition-all duration-200 group 
+                            ${hasActiveSubItem(item.subItems)
+                                ? 'bg-sidebar-accent text-sidebar-accent-foreground shadow-sm'
+                                : 'text-sidebar-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground'
+                            }`}
+                          >
+                            <div className="flex items-center gap-3">
+                              <item.icon className="h-4 w-4 flex-shrink-0" />
+                              {!isCollapsed && (
                                 <span className="text-sm font-medium truncate">
                                   {item.title}
                                 </span>
-                                {item.badge && (
-                                  <Badge 
-                                    variant="secondary" 
-                                    className="ml-2 h-5 min-w-[20px] flex items-center justify-center text-xs px-1.5 bg-primary/10 text-primary"
-                                  >
-                                    {item.badge}
-                                  </Badge>
-                                )}
-                              </div>
-                              {item.description && (
-                                <p className="text-xs text-sidebar-foreground/60 mt-0.5 truncate">
-                                  {item.description}
-                                </p>
                               )}
                             </div>
-                          </>
-                        )}
-                        
-                        {/* Tooltip for collapsed state */}
-                        {isCollapsed && item.badge && (
-                          <Badge 
-                            variant="secondary" 
-                            className="absolute -top-1 -right-1 h-4 w-4 flex items-center justify-center text-xs p-0 bg-destructive text-destructive-foreground"
-                          >
-                            {item.badge}
-                          </Badge>
-                        )}
-                      </NavLink>
-                    </SidebarMenuButton>
+                            {!isCollapsed && <ChevronDown className="h-4 w-4 transition-transform group-data-[state=open]:rotate-180" />}
+                          </SidebarMenuButton>
+                        </CollapsibleTrigger>
+                        <CollapsibleContent className="overflow-hidden data-[state=closed]:animate-collapsible-up data-[state=open]:animate-collapsible-down">
+                          <SidebarMenu className="ml-6 mt-1 space-y-1">
+                            {item.subItems.map(subItem => (
+                              <SidebarMenuItem key={subItem.title}>
+                                <SidebarMenuButton asChild>
+                                  <NavLink
+                                    to={subItem.url || '#'}
+                                    className={({ isActive: linkIsActive }) =>
+                                      `flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 relative ${
+                                        linkIsActive
+                                          ? 'bg-sidebar-accent text-sidebar-accent-foreground shadow-sm'
+                                          : 'text-sidebar-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground'
+                                      }`
+                                    }
+                                  >
+                                    <subItem.icon className="h-4 w-4 flex-shrink-0" />
+                                    {!isCollapsed && (
+                                      <div className="flex-1 min-w-0">
+                                        <div className="flex items-center justify-between">
+                                          <span className="text-sm font-medium truncate">
+                                            {subItem.title}
+                                          </span>
+                                          {subItem.badge && (
+                                            <Badge 
+                                              variant="secondary" 
+                                              className="ml-2 h-5 min-w-[20px] flex items-center justify-center text-xs px-1.5 bg-primary/10 text-primary"
+                                            >
+                                              {subItem.badge}
+                                            </Badge>
+                                          )}
+                                        </div>
+                                        {subItem.description && (
+                                          <p className="text-xs text-sidebar-foreground/60 mt-0.5 truncate">
+                                            {subItem.description}
+                                          </p>
+                                        )}
+                                      </div>
+                                    )}
+                                  </NavLink>
+                                </SidebarMenuButton>
+                              </SidebarMenuItem>
+                            ))}
+                          </SidebarMenu>
+                        </CollapsibleContent>
+                      </Collapsible>
+                    ) : (
+                      <SidebarMenuButton asChild>
+                        <NavLink
+                          to={item.url || '#'}
+                          className={({ isActive: linkIsActive }) =>
+                            `flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 group relative ${
+                              linkIsActive
+                                ? 'bg-sidebar-accent text-sidebar-accent-foreground shadow-sm'
+                                : 'text-sidebar-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground'
+                            }`
+                          }
+                        >
+                          <item.icon className="h-4 w-4 flex-shrink-0" />
+                          
+                          {!isCollapsed && (
+                            <>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center justify-between">
+                                  <span className="text-sm font-medium truncate">
+                                    {item.title}
+                                  </span>
+                                  {item.badge && (
+                                    <Badge 
+                                      variant="secondary" 
+                                      className="ml-2 h-5 min-w-[20px] flex items-center justify-center text-xs px-1.5 bg-primary/10 text-primary"
+                                    >
+                                      {item.badge}
+                                    </Badge>
+                                  )}
+                                </div>
+                                {item.description && (
+                                  <p className="text-xs text-sidebar-foreground/60 mt-0.5 truncate">
+                                    {item.description}
+                                  </p>
+                                )}
+                              </div>
+                            </>
+                          )}
+                          
+                          {/* Tooltip for collapsed state */}
+                          {isCollapsed && item.badge && (
+                            <Badge 
+                              variant="secondary" 
+                              className="absolute -top-1 -right-1 h-4 w-4 flex items-center justify-center text-xs p-0 bg-destructive text-destructive-foreground"
+                            >
+                              {item.badge}
+                            </Badge>
+                          )}
+                        </NavLink>
+                      </SidebarMenuButton>
+                    )}
                   </SidebarMenuItem>
                 ))}
               </SidebarMenu>

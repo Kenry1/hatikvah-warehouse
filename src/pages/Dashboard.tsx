@@ -13,7 +13,6 @@ import { WarehouseDashboard } from '@/components/dashboards/WarehouseDashboard';
 import { AdminDashboard } from '@/components/dashboards/AdminDashboard';
 import { ProcurementDashboard } from '@/components/dashboards/ProcurementDashboard';
 import { ManagementDashboard } from '@/components/dashboards/ManagementDashboard';
-import { DashboardLayout } from '@/components/layout/DashboardLayout';
 
 function DashboardContent() {
   const { user } = useAuth();
@@ -61,11 +60,8 @@ function DashboardContent() {
 
 export function Dashboard() {
   return (
-    <AuthProvider>
-      <DashboardLayout>
-        <DashboardContent />
-      </DashboardLayout>
-    </AuthProvider>
+    // Removed DashboardLayout and AuthProvider as they are handled by App.tsx's nested routes
+    <DashboardContent />
   );
 }
 

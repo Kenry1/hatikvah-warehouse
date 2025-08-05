@@ -39,10 +39,10 @@ export function AppNavbar() {
           
           <div className="flex items-center gap-3">
             <div className="h-8 w-8 rounded-lg bg-gradient-primary flex items-center justify-center">
-              <span className="text-white font-bold text-sm">OP</span>
+              <span className="text-white font-bold text-sm">s</span>
             </div>
             <div>
-              <h1 className="text-lg font-semibold">Operations Platform</h1>
+              <h1 className="text-lg font-semibold">Swiish</h1>
               <p className="text-xs text-muted-foreground">{user.companyName}</p>
             </div>
           </div>
