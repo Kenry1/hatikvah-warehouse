@@ -57,6 +57,7 @@ export function ProfileSettingsModal({ open, onOpenChange }: ProfileSettingsModa
   const [username, setUsername] = useState(user?.username || '');
   const [bio, setBio] = useState('');
   const [dateOfBirth, setDateOfBirth] = useState('');
+  const [phoneNumber, setPhoneNumber] = useState(user?.phoneNumber || '');
   const [twoFactorEnabled, setTwoFactorEnabled] = useState(false);
 
   const isDarkMode = theme === 'dark';
@@ -195,6 +196,7 @@ export function ProfileSettingsModal({ open, onOpenChange }: ProfileSettingsModa
           username,
           bio,
           dateOfBirth,
+          phoneNumber,
         }),
       });
 
@@ -637,6 +639,16 @@ export function ProfileSettingsModal({ open, onOpenChange }: ProfileSettingsModa
                     type="date"
                     value={dateOfBirth}
                     onChange={(e) => setDateOfBirth(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="phone-number">Phone Number</Label>
+                  <Input
+                    id="phone-number"
+                    type="tel"
+                    value={phoneNumber}
+                    onChange={(e) => setPhoneNumber(e.target.value)}
+                    placeholder="Enter your phone number"
                   />
                 </div>
                 <div>

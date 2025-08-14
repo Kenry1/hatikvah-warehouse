@@ -111,7 +111,7 @@ const getNavigationStructure = (role: UserRole): NavigationGroup[] => {
       {
         title: 'IT Operations',
         items: [
-          { title: 'Ticket Management', url: '/ticket-management', icon: Ticket, badge: '12', description: 'Manage IT support tickets' },
+          { title: 'Incoming Tickets', url: '/incoming-tickets', icon: Ticket, badge: '12', description: 'Manage all incoming IT support tickets' },
           { title: 'Asset Inventory', url: '/it-assets', icon: Database, description: 'IT equipment and software' },
         ]
       }
@@ -249,13 +249,6 @@ const getNavigationStructure = (role: UserRole): NavigationGroup[] => {
           { title: 'Supply Rates', url: '/supply-rates', icon: DollarSign, description: 'Pricing and rate management' },
           { title: 'Reorder Alerts', url: '/reorder-alerts', icon: Bell, badge: '3', description: 'Low stock notifications' },
         ]
-      },
-      {
-        title: 'Purchasing',
-        items: [
-          { title: 'Purchase Orders', url: '/purchase-orders', icon: ShoppingCart, description: 'Create and track orders' },
-          { title: 'Vendor Performance', url: '/vendor-performance', icon: TrendingUp, description: 'Supplier metrics and KPIs' },
-        ]
       }
     ],
     'Management': [
@@ -284,7 +277,6 @@ export function AppSidebar({ userRole, className }: AppSidebarProps) {
 
   const navigationGroups = getNavigationStructure(userRole);
   // const isActive = (path: string) => currentPath === path; // No longer directly used for top-level NavLink
-  const isCollapsed = state === 'collapsed';
 
   // Function to check if any sub-item is active
   const hasActiveSubItem = (subItems: NavigationItem[]) => {
@@ -294,14 +286,13 @@ export function AppSidebar({ userRole, className }: AppSidebarProps) {
   return (
     <Sidebar
       className={cn("bg-sidebar transition-all duration-300 border-r border-sidebar-border", className)}
-      collapsed={isCollapsed}
       variant="inset" // Added variant="inset" here
     >
       <SidebarContent className="bg-sidebar">
         {navigationGroups.map((group, groupIndex) => (
           <SidebarGroup key={group.title} className={groupIndex > 0 ? 'mt-6' : ''}>
             <SidebarGroupLabel className="text-sidebar-foreground/60 text-xs uppercase tracking-wider mb-3 px-3">
-              {!isCollapsed && group.title}
+              {state !== 'collapsed' && group.title}
             </SidebarGroupLabel>
             
             <SidebarGroupContent>
@@ -320,13 +311,13 @@ export function AppSidebar({ userRole, className }: AppSidebarProps) {
                           >
                             <div className="flex items-center gap-3">
                               <item.icon className="h-4 w-4 flex-shrink-0" />
-                              {!isCollapsed && (
+                              {state !== 'collapsed' && (
                                 <span className="text-sm font-medium truncate">
                                   {item.title}
                                 </span>
                               )}
                             </div>
-                            {!isCollapsed && <ChevronDown className="h-4 w-4 transition-transform group-data-[state=open]:rotate-180" />}
+                            {state !== 'collapsed' && <ChevronDown className="h-4 w-4 transition-transform group-data-[state=open]:rotate-180" />}
                           </SidebarMenuButton>
                         </CollapsibleTrigger>
                         <CollapsibleContent className="overflow-hidden data-[state=closed]:animate-collapsible-up data-[state=open]:animate-collapsible-down">
@@ -345,7 +336,7 @@ export function AppSidebar({ userRole, className }: AppSidebarProps) {
                                     }
                                   >
                                     <subItem.icon className="h-4 w-4 flex-shrink-0" />
-                                    {!isCollapsed && (
+                                    {state !== 'collapsed' && (
                                       <div className="flex-1 min-w-0">
                                         <div className="flex items-center justify-between">
                                           <span className="text-sm font-medium truncate">
@@ -388,7 +379,7 @@ export function AppSidebar({ userRole, className }: AppSidebarProps) {
                         >
                           <item.icon className="h-4 w-4 flex-shrink-0" />
                           
-                          {!isCollapsed && (
+                          {state !== 'collapsed' && (
                             <>
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-center justify-between">
@@ -414,7 +405,7 @@ export function AppSidebar({ userRole, className }: AppSidebarProps) {
                           )}
                           
                           {/* Tooltip for collapsed state */}
-                          {isCollapsed && item.badge && (
+                          {state === 'collapsed' && item.badge && (
                             <Badge 
                               variant="secondary" 
                               className="absolute -top-1 -right-1 h-4 w-4 flex items-center justify-center text-xs p-0 bg-destructive text-destructive-foreground"

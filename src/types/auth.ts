@@ -6,6 +6,7 @@ export interface User {
   companyId: string;
   companyName: string;
   createdAt: string;
+  phoneNumber?: string; // Added phone number
 }
 
 export interface Company {

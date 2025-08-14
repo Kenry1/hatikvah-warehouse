@@ -294,7 +294,6 @@ export default function ITTickets() {
       <Tabs defaultValue="my-tickets" className="space-y-4">
         <TabsList>
           <TabsTrigger value="my-tickets">My Tickets</TabsTrigger>
-          <TabsTrigger value="all-tickets">All Tickets</TabsTrigger>
         </TabsList>
 
         <TabsContent value="my-tickets" className="space-y-4">
@@ -360,62 +359,6 @@ export default function ITTickets() {
               </Card>
             ))}
           </div>
-        </TabsContent>
-
-        <TabsContent value="all-tickets">
-          <Card>
-            <CardHeader>
-              <CardTitle>All IT Tickets</CardTitle>
-              <CardDescription>Complete overview of all support tickets</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b">
-                      <th className="text-left p-3">Ticket ID</th>
-                      <th className="text-left p-3">Title</th>
-                      <th className="text-left p-3">Requester</th>
-                      <th className="text-left p-3">Category</th>
-                      <th className="text-left p-3">Priority</th>
-                      <th className="text-left p-3">Status</th>
-                      <th className="text-left p-3">Created</th>
-                      <th className="text-left p-3">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredTickets.map((ticket) => (
-                      <tr key={ticket.id} className="border-b hover:bg-muted/50">
-                        <td className="p-3 font-medium">{ticket.id}</td>
-                        <td className="p-3">{ticket.title}</td>
-                        <td className="p-3">{ticket.requester}</td>
-                        <td className="p-3">{ticket.category}</td>
-                        <td className="p-3">
-                          <Badge className={getPriorityColor(ticket.priority)}>
-                            {getPriorityIcon(ticket.priority)}
-                            <span className="ml-1 capitalize">{ticket.priority}</span>
-                          </Badge>
-                        </td>
-                        <td className="p-3">
-                          <Badge className={getStatusColor(ticket.status)}>
-                            {getStatusIcon(ticket.status)}
-                            <span className="ml-1 capitalize">{ticket.status.replace('-', ' ')}</span>
-                          </Badge>
-                        </td>
-                        <td className="p-3">{format(new Date(ticket.createdDate), "MMM dd")}</td>
-                        <td className="p-3">
-                          <div className="flex gap-1">
-                            <Button variant="ghost" size="sm">View</Button>
-                            <Button variant="ghost" size="sm">Edit</Button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </CardContent>
-          </Card>
         </TabsContent>
       </Tabs>
     </div>

@@ -20,6 +20,9 @@ export function ICTDashboard() {
     password: ''
   });
 
+  // Mock current user for demonstration purposes
+  const currentUser = { id: 'john_doe_id', username: 'John Doe' };
+
   const stats = [
     { title: 'Active Users', value: 42, description: 'Total users in system', color: 'success' as const },
     { title: 'Open Tickets', value: 8, description: '3 critical, 5 normal', color: 'warning' as const },
@@ -27,11 +30,15 @@ export function ICTDashboard() {
     { title: 'Pending Approvals', value: 5, description: 'User access requests', color: 'primary' as const },
   ];
 
-  const recentTickets = [
-    { id: 'IT-001', title: 'VPN Connection Issues', priority: 'High', status: 'Open', assignee: 'John Doe', created: '2 hours ago' },
-    { id: 'IT-002', title: 'Email Server Maintenance', priority: 'Medium', status: 'In Progress', assignee: 'Jane Smith', created: '1 day ago' },
-    { id: 'IT-003', title: 'Software License Renewal', priority: 'Low', status: 'Resolved', assignee: 'Mike Johnson', created: '3 days ago' },
+  const allRecentTickets = [
+    { id: 'IT-001', title: 'VPN Connection Issues', priority: 'High', status: 'Open', assignee: 'John Doe', creatorId: 'john_doe_id', created: '2 hours ago' },
+    { id: 'IT-002', title: 'Email Server Maintenance', priority: 'Medium', status: 'In Progress', assignee: 'Jane Smith', creatorId: 'jane_smith_id', created: '1 day ago' },
+    { id: 'IT-003', title: 'Software License Renewal', priority: 'Low', status: 'Resolved', assignee: 'Mike Johnson', creatorId: 'mike_johnson_id', created: '3 days ago' },
+    { id: 'IT-004', title: 'Printer Not Working', priority: 'High', status: 'Open', assignee: 'John Doe', creatorId: 'john_doe_id', created: '4 hours ago' },
   ];
+
+  // Filter tickets to show only those created by the current user
+  const recentTickets = allRecentTickets.filter(ticket => ticket.creatorId === currentUser.id);
 
   const systemUsers = [
     { id: '1', username: 'admin', email: 'admin@techcorp.com', role: 'ICT', status: 'Active', lastLogin: '5 min ago' },
@@ -79,9 +86,9 @@ export function ICTDashboard() {
             <div>
               <CardTitle className="flex items-center gap-2">
                 <Ticket className="h-5 w-5" />
-                Recent IT Tickets
+                My Created IT Tickets
               </CardTitle>
-              <CardDescription>Latest support requests and system issues</CardDescription>
+              <CardDescription>Your recently created support requests and system issues</CardDescription>
             </div>
             <Button variant="outline" size="sm">
               <Plus className="h-4 w-4 mr-2" />
@@ -90,23 +97,27 @@ export function ICTDashboard() {
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {recentTickets.map((ticket) => (
-                <div key={ticket.id} className="flex items-center justify-between p-3 border rounded-lg">
-                  <div className="flex items-center gap-3">
-                    {getStatusIcon(ticket.status)}
-                    <div>
-                      <p className="font-medium">{ticket.title}</p>
-                      <p className="text-sm text-muted-foreground">{ticket.id} • {ticket.assignee}</p>
+              {recentTickets.length > 0 ? (
+                recentTickets.map((ticket) => (
+                  <div key={ticket.id} className="flex items-center justify-between p-3 border rounded-lg">
+                    <div className="flex items-center gap-3">
+                      {getStatusIcon(ticket.status)}
+                      <div>
+                        <p className="font-medium">{ticket.title}</p>
+                        <p className="text-sm text-muted-foreground">{ticket.id} • {ticket.assignee}</p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <Badge className={getPriorityColor(ticket.priority)} variant="secondary">
+                        {ticket.priority}
+                      </Badge>
+                      <p className="text-xs text-muted-foreground mt-1">{ticket.created}</p>
                     </div>
                   </div>
-                  <div className="text-right">
-                    <Badge className={getPriorityColor(ticket.priority)} variant="secondary">
-                      {ticket.priority}
-                    </Badge>
-                    <p className="text-xs text-muted-foreground mt-1">{ticket.created}</p>
-                  </div>
-                </div>
-              ))}
+                ))
+              ) : (
+                <p className="text-center text-muted-foreground">No IT tickets created by you.</p>
+              )}
             </div>
           </CardContent>
         </Card>

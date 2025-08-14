@@ -15,6 +15,8 @@ import EmployeeDirectory from "./pages/EmployeeDirectory";
 import UserManagement from "./pages/UserManagement"; 
 import HouseAttendance from "./pages/HouseAttendance"; // Import the new HouseAttendance component
 import { FieldTripAlert } from "./pages/FieldTripAlert"; // Import the new FieldTripAlert component
+import IncomingTickets from "./pages/IncomingTickets"; // Import IncomingTickets component
+import AssetInventory from "./pages/AssetInventory"; // Import AssetInventory component
 import { RouteGuard } from "./components/navigation/RouteGuard";
 import { DashboardLayout } from "./components/layout/DashboardLayout";
 
@@ -91,6 +93,8 @@ const App = () => (
             <Route path="/reorder-alerts" element={<Dashboard />} />
             <Route path="/attendance/house" element={<HouseAttendance />} />
             <Route path="/field-trip-alert" element={<FieldTripAlert />} />
+            <Route path="/incoming-tickets" element={<IncomingTickets />} /> 
+            <Route path="/it-assets" element={<AssetInventory />} /> {/* New route for AssetInventory */} 
           </Route>
 
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

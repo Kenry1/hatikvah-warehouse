@@ -64,14 +64,15 @@ export function MaterialModal({ isOpen, onClose, onSave, initialData, mode = 'cr
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const categories = [
-    'Safety Equipment', 'FTTH Materials', 'FTTX Components', 'Company Assets'
+    'Safety Equipment', 'FTTH Materials', 'FTTX Components', 'Company Assets', 'Electronic and Computing Devices'
   ];
 
   const subcategories = {
     'Safety Equipment': ['Hard Hats', 'Safety Vests', 'Work Gloves', 'Safety Boots', 'Eye Protection', 'Fall Protection'],
     'FTTH Materials': ['Fiber Optic Cables', 'ONT Devices', 'Optical Splitters', 'Drop Cables', 'Closure Systems'],
     'FTTX Components': ['Distribution Boxes', 'Patch Panels', 'Network Connectors', 'Splice Trays', 'Cable Management'],
-    'Company Assets': ['Testing Equipment', 'Laptops', 'Power Tools', 'Vehicles', 'Office Equipment', 'Software Licenses']
+    'Company Assets': ['Testing Equipment', 'Power Tools', 'Vehicles', 'Office Equipment', 'Software Licenses'],
+    'Electronic and Computing Devices': ['Laptops', 'Desktops', 'Monitors', 'Servers', 'Network Devices', 'Mobile Devices', 'Printers', 'Peripherals']
   };
 
   const units = [
@@ -80,12 +81,12 @@ export function MaterialModal({ isOpen, onClose, onSave, initialData, mode = 'cr
 
   const suppliers = [
     'ABC Materials Ltd', 'TechSupply Corp', 'SafetyFirst Inc', 'FiberTech Solutions', 
-    'Industrial Supplies Co', 'Network Components Ltd', 'Premium Safety Gear'
+    'Industrial Supplies Co', 'Network Components Ltd', 'Premium Safety Gear', 'IT Hardware Solutions', 'Global Electronics'
   ];
 
   const locations = [
     'Warehouse A - Zone 1', 'Warehouse A - Zone 2', 'Warehouse B - Zone 1', 'Warehouse B - Zone 2',
-    'Storage Room 1', 'Storage Room 2', 'Outdoor Storage', 'Cold Storage', 'Hazmat Storage'
+    'Storage Room 1', 'Storage Room 2', 'Outdoor Storage', 'Cold Storage', 'Hazmat Storage', 'IT Storage Cage'
   ];
 
   const form = useForm<MaterialFormData>({
