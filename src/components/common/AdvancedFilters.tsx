@@ -24,6 +24,7 @@ import {
   SlidersHorizontal
 } from 'lucide-react';
 import { FilterOption } from '@/types/common';
+import { DialogHeader, DialogTitle } from '@/components/ui/dialog'; // Import DialogTitle
 
 interface AdvancedFiltersProps {
   filterOptions: FilterOption[];
@@ -147,6 +148,9 @@ export function AdvancedFilters({
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-80 p-4" align="start">
+              <DialogHeader>
+                <DialogTitle>Advanced Filters</DialogTitle> {/* Added DialogTitle here */}
+              </DialogHeader>
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <h4 className="font-medium">Filters</h4>
@@ -205,7 +209,7 @@ export function AdvancedFilters({
       {(Object.keys(filters).length > 0 || searchTerm) && (
         <div className="flex flex-wrap gap-2">
           {searchTerm && (
-            <Badge variant="secondary" className="flex items-center gap-1">
+            <Badge key="search-term-filter" variant="secondary" className="flex items-center gap-1">
               Search: "{searchTerm}"
               <X
                 className="h-3 w-3 cursor-pointer"

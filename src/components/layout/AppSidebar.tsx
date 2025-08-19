@@ -145,7 +145,7 @@ const getNavigationStructure = (role: UserRole): NavigationGroup[] => {
       {
         title: 'Compliance',
         items: [
-          { title: 'Safety Reports Viewer', url: '/safety-reports-viewer', icon: Archive, description: 'Incident analysis and reports' },
+          { title: 'Safety Reports Viewer', url: '/sreportsv', icon: Archive, description: 'Incident analysis and reports' },
           { title: 'Risk Assessments', url: '/risk-assessments', icon: AlertTriangle, description: 'Workplace risk evaluation' },
         ]
       }

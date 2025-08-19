@@ -287,8 +287,6 @@ export default function SafetyReports() {
       <Tabs defaultValue="my-reports" className="space-y-4">
         <TabsList>
           <TabsTrigger value="my-reports">My Reports</TabsTrigger>
-          <TabsTrigger value="all-reports">All Reports</TabsTrigger>
-          <TabsTrigger value="dashboard">Safety Dashboard</TabsTrigger>
         </TabsList>
 
         <TabsContent value="my-reports" className="space-y-4">
@@ -349,124 +347,6 @@ export default function SafetyReports() {
                 </CardContent>
               </Card>
             ))}
-          </div>
-        </TabsContent>
-
-        <TabsContent value="all-reports">
-          <Card>
-            <CardHeader>
-              <CardTitle>All Safety Reports</CardTitle>
-              <CardDescription>Complete overview of all safety incidents and reports</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b">
-                      <th className="text-left p-3">Report ID</th>
-                      <th className="text-left p-3">Title</th>
-                      <th className="text-left p-3">Type</th>
-                      <th className="text-left p-3">Location</th>
-                      <th className="text-left p-3">Severity</th>
-                      <th className="text-left p-3">Status</th>
-                      <th className="text-left p-3">Reporter</th>
-                      <th className="text-left p-3">Date</th>
-                      <th className="text-left p-3">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredReports.map((report) => (
-                      <tr key={report.id} className="border-b hover:bg-muted/50">
-                        <td className="p-3 font-medium">{report.id}</td>
-                        <td className="p-3">{report.title}</td>
-                        <td className="p-3">{report.type}</td>
-                        <td className="p-3">{report.location}</td>
-                        <td className="p-3">
-                          <Badge className={getSeverityColor(report.severity)}>
-                            <span className="capitalize">{report.severity}</span>
-                          </Badge>
-                        </td>
-                        <td className="p-3">
-                          <Badge className={getStatusColor(report.status)}>
-                            <span className="capitalize">{report.status}</span>
-                          </Badge>
-                        </td>
-                        <td className="p-3">{report.reporter}</td>
-                        <td className="p-3">{format(new Date(report.reportDate), "MMM dd")}</td>
-                        <td className="p-3">
-                          <div className="flex gap-1">
-                            <Button variant="ghost" size="sm">View</Button>
-                            <Button variant="ghost" size="sm">Investigate</Button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="dashboard">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Total Reports</CardTitle>
-                <FileText className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{reports.length}</div>
-                <p className="text-xs text-muted-foreground">
-                  This month
-                </p>
-              </CardContent>
-            </Card>
-            
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Open Cases</CardTitle>
-                <AlertTriangle className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">
-                  {reports.filter(r => r.status !== 'closed' && r.status !== 'resolved').length}
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Require attention
-                </p>
-              </CardContent>
-            </Card>
-            
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">High Severity</CardTitle>
-                <Shield className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">
-                  {reports.filter(r => r.severity === 'high' || r.severity === 'critical').length}
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Critical & high priority
-                </p>
-              </CardContent>
-            </Card>
-            
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Follow-up Required</CardTitle>
-                <MapPin className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">
-                  {reports.filter(r => r.followUpRequired).length}
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Need follow-up
-                </p>
-              </CardContent>
-            </Card>
           </div>
         </TabsContent>
       </Tabs>

@@ -1,22 +1,28 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { DataTable } from '@/components/common/DataTable';
 import { TableColumn } from '@/types/common';
 import { Button } from '@/components/ui/button';
 import { Clock, MapPin, CheckCircle2, XCircle, PauseCircle, Fingerprint } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
-import EmployeeAttendanceControls from '@/components/attendance/EmployeeAttendanceControls'; // Import new component
-import { useAuth } from '@/contexts/AuthContext'; // Assuming useAuth provides current user
+import EmployeeAttendanceControls from '@/components/attendance/EmployeeAttendanceControls';
+import { useAuth } from '@/contexts/AuthContext';
+import { db } from '@/lib/firebase';
+import { doc, getDoc, setDoc, updateDoc, collection, query, where, getDocs, serverTimestamp } from "firebase/firestore";
 
 interface EmployeeAttendance {
   id: string;
   name: string;
   status: 'present' | 'on-leave' | 'off-duty';
-  lastLocation: string; // Mock location string
-  clockInTime: string | null;
-  clockOutTime: string | null;
+  lastLocation: string;
+  clockInTime: string | null; // Formatted time string for display
+  clockOutTime: string | null; // Formatted time string for display
   dailyHours: string;
   overtimeHours: string;
+  clockInTimestamp: Date | null; // Actual Date object for calculations
+  clockOutTimestamp: Date | null; // Actual Date object for calculations
+  companyId: string;
+  date: string; // YYYY-MM-DD
 }
 
 interface MonthlyLogEntry {
@@ -29,98 +35,10 @@ interface EmployeeMonthlyLog {
   logs: MonthlyLogEntry[];
 }
 
-const mockEmployees: EmployeeAttendance[] = [
-  {
-    id: 'emp1',
-    name: 'Alice Wonderland',
-    status: 'present',
-    lastLocation: 'Office Building A, Floor 3',
-    clockInTime: '08:00 AM',
-    clockOutTime: null,
-    dailyHours: '00:00',
-    overtimeHours: '00:00',
-  },
-  {
-    id: 'emp2',
-    name: 'Bob The Builder',
-    status: 'on-leave',
-    lastLocation: 'N/A',
-    clockInTime: null,
-    clockOutTime: null,
-    dailyHours: '00:00',
-    overtimeHours: '00:00',
-  },
-  {
-    id: 'emp3',
-    name: 'Charlie Chaplin',
-    status: 'off-duty',
-    lastLocation: 'Home',
-    clockInTime: null,
-    clockOutTime: null,
-    dailyHours: '00:00',
-    overtimeHours: '00:00',
-  },
-  {
-    id: 'emp4',
-    name: 'David Copperfield',
-    status: 'present',
-    lastLocation: 'Office Building A, Floor 5',
-    clockInTime: '09:15 AM',
-    clockOutTime: null,
-    dailyHours: '00:00',
-    overtimeHours: '00:00',
-  },
-];
-
-const mockMonthlyLogs: EmployeeMonthlyLog[] = [
-  {
-    employeeId: 'emp1',
-    logs: [
-      { date: '2024-07-01', status: 'Present' },
-      { date: '2024-07-02', status: 'Present' },
-      { date: '2024-07-03', status: 'Leave' },
-      { date: '2024-07-04', status: 'Present' },
-      { date: '2024-07-05', status: 'Absent' },
-    ],
-  },
-  {
-    employeeId: 'emp2',
-    logs: [
-      { date: '2024-07-01', status: 'Leave' },
-      { date: '2024-07-02', status: 'Leave' },
-      { date: '2024-07-03', status: 'Leave' },
-      { date: '2024-07-04', status: 'Present' },
-      { date: '2024-07-05', status: 'Present' },
-    ],
-  },
-];
-
-const calculateTimeDiff = (start: string, end: string | null) => {
+const calculateTimeDiff = (start: Date | null, end: Date | null) => {
   if (!start || !end) return '00:00';
 
-  const [startHour, startMinute, startAmPm] = start.match(/(\d+):(\d+)\s(AM|PM)/)!.slice(1);
-  const [endHour, endMinute, endAmPm] = end.match(/(\d+):(\d+)\s(AM|PM)/)!.slice(1);
-
-  let sH = parseInt(startHour, 10);
-  if (startAmPm === 'PM' && sH !== 12) sH += 12;
-  if (startAmPm === 'AM' && sH === 12) sH = 0;
-
-  let eH = parseInt(endHour, 10);
-  if (endAmPm === 'PM' && eH !== 12) eH += 12;
-  if (endAmPm === 'AM' && eH === 12) eH = 0;
-
-  const startDate = new Date();
-  startDate.setHours(sH, parseInt(startMinute, 10), 0, 0);
-
-  const endDate = new Date();
-  endDate.setHours(eH, parseInt(endMinute, 10), 0, 0);
-
-  let diffMs = endDate.getTime() - startDate.getTime();
-  if (diffMs < 0) {
-    // Handles cases where clock out is on the next day (e.g., 10 PM to 2 AM)
-    diffMs += 24 * 60 * 60 * 1000; 
-  }
-
+  const diffMs = end.getTime() - start.getTime();
   const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
   const diffMinutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
 
@@ -142,101 +60,169 @@ const calculateOvertime = (totalHours: string) => {
 };
 
 const HouseAttendance = () => {
-  const { user } = useAuth(); // Get current user from AuthContext
-  const [employees, setEmployees] = useState<EmployeeAttendance[]>(mockEmployees);
+  const { user } = useAuth();
+  const [currentEmployeeAttendance, setCurrentEmployeeAttendance] = useState<EmployeeAttendance | null>(null);
+  const [loadingAttendance, setLoadingAttendance] = useState(true);
 
-  // Determine the current employee for controls
-  let currentEmployee: EmployeeAttendance | null = null;
-  if (user) {
-    currentEmployee = employees.find(emp => emp.id === user.id) || {
-      // Create a mock employee if user is logged in but not in mockEmployees
-      id: user.id,
-      name: user.name || 'Logged-in User', // Use user's name or a default
-      status: 'off-duty', 
-      lastLocation: 'N/A',
-      clockInTime: null,
-      clockOutTime: null,
-      dailyHours: '00:00',
-      overtimeHours: '00:00',
-    };
-  } else {
-    // If no user is logged in, provide a guest employee
-    currentEmployee = {
-      id: 'guest',
-      name: 'Guest User',
-      status: 'off-duty',
-      lastLocation: 'N/A',
-      clockInTime: null,
-      clockOutTime: null,
-      dailyHours: '00:00',
-      overtimeHours: '00:00',
-    };
-  }
+  const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
 
-  // Simulate real-time location updates (for demonstration)
+  const fetchCurrentEmployeeAttendance = useCallback(async () => {
+    if (!user || !user.companyId) {
+      setLoadingAttendance(false);
+      return;
+    }
+
+    setLoadingAttendance(true);
+    try {
+      const attendanceDocRef = doc(db, "companies", user.companyId, "dailyAttendance", user.id + "_" + today);
+      const docSnap = await getDoc(attendanceDocRef);
+
+      if (docSnap.exists()) {
+        const data = docSnap.data() as Omit<EmployeeAttendance, 'clockInTime' | 'clockOutTime'> & { clockInTimestamp?: any, clockOutTimestamp?: any };
+        setCurrentEmployeeAttendance({
+          ...data,
+          clockInTime: data.clockInTimestamp ? new Date(data.clockInTimestamp.toDate()).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }) : null,
+          clockOutTime: data.clockOutTimestamp ? new Date(data.clockOutTimestamp.toDate()).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }) : null,
+          clockInTimestamp: data.clockInTimestamp ? data.clockInTimestamp.toDate() : null,
+          clockOutTimestamp: data.clockOutTimestamp ? data.clockOutTimestamp.toDate() : null,
+        });
+      } else {
+        // Initialize if no record exists for today
+        setCurrentEmployeeAttendance({
+          id: user.id,
+          name: user.username || 'Logged-in User',
+          status: 'off-duty',
+          lastLocation: 'N/A',
+          clockInTime: null,
+          clockOutTime: null,
+          dailyHours: '00:00',
+          overtimeHours: '00:00',
+          clockInTimestamp: null,
+          clockOutTimestamp: null,
+          companyId: user.companyId,
+          date: today,
+        });
+      }
+    } catch (error) {
+      console.error("Error fetching current employee attendance:", error);
+      toast({
+        title: "Error",
+        description: "Failed to fetch your attendance data. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoadingAttendance(false);
+    }
+  }, [user, today]);
+
   useEffect(() => {
-    const interval = setInterval(() => {
-      setEmployees(prevEmployees =>
-        prevEmployees.map(emp => {
-          if (emp.status === 'present') {
-            const randomSuffix = Math.floor(Math.random() * 100);
-            return { ...emp, lastLocation: `Office Building A, Floor ${Math.floor(Math.random() * 5) + 1} - Area ${randomSuffix}` };
-          }
-          return emp;
-        })
-      );
-    }, 5000); // Update every 5 seconds
-    return () => clearInterval(interval);
-  }, []);
+    fetchCurrentEmployeeAttendance();
+  }, [fetchCurrentEmployeeAttendance]);
 
-  const handleClockIn = (employeeId: string) => {
-    if (employeeId === 'guest') {
+  // Provide a guest employee if no user is logged in
+  const currentEmployeeForControls = user && !loadingAttendance && currentEmployeeAttendance
+    ? currentEmployeeAttendance
+    : {
+        id: 'guest',
+        name: 'Guest User',
+        status: 'off-duty',
+        lastLocation: 'N/A',
+        clockInTime: null,
+        clockOutTime: null,
+        dailyHours: '00:00',
+        overtimeHours: '00:00',
+        clockInTimestamp: null,
+        clockOutTimestamp: null,
+        companyId: '',
+        date: today,
+      };
+
+  const handleClockIn = async (employeeId: string) => {
+    if (!user || !user.companyId) {
       toast({ title: "Login Required", description: "Please log in to use attendance features.", variant: "destructive" });
       return;
     }
+    
     const now = new Date();
-    const time = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
-    setEmployees(prevEmployees =>
-      prevEmployees.map(emp =>
-        emp.id === employeeId && emp.clockInTime === null
-          ? { ...emp, status: 'present', clockInTime: time, clockOutTime: null, dailyHours: '00:00', overtimeHours: '00:00' }
-          : emp
-      )
-    );
-    toast({ title: "Clock In Successful", description: `Employee ${employeeId} clocked in at ${time}.` });
+    const timeString = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+
+    try {
+      const attendanceDocRef = doc(db, "companies", user.companyId, "dailyAttendance", user.id + "_" + today);
+      await setDoc(attendanceDocRef, {
+        id: user.id,
+        name: user.username,
+        companyId: user.companyId,
+        date: today,
+        clockInTimestamp: now,
+        clockInTime: timeString, // Store formatted string for display simplicity
+        status: 'present',
+        lastLocation: currentEmployeeAttendance?.lastLocation || 'Unknown',
+        dailyHours: '00:00',
+        overtimeHours: '00:00',
+        clockOutTimestamp: null,
+        clockOutTime: null,
+        updatedAt: serverTimestamp(),
+        createdAt: serverTimestamp(),
+      }, { merge: true }); // Use merge: true to update existing fields or create if not exists
+
+      toast({ title: "Clock In Successful", description: `You clocked in at ${timeString}.` });
+      fetchCurrentEmployeeAttendance(); // Re-fetch to update local state
+    } catch (error) {
+      console.error("Error clocking in:", error);
+      toast({ title: "Clock In Failed", description: "Could not record clock in. Please try again.", variant: "destructive" });
+    }
   };
 
-  const handleClockOut = (employeeId: string) => {
-    if (employeeId === 'guest') {
-      toast({ title: "Login Required", description: "Please log in to use attendance features.", variant: "destructive" });
+  const handleClockOut = async (employeeId: string) => {
+    if (!user || !user.companyId || !currentEmployeeAttendance || !currentEmployeeAttendance.clockInTimestamp) {
+      toast({ title: "Error", description: "Cannot clock out. No active clock-in found.", variant: "destructive" });
       return;
     }
-    const now = new Date();
-    const time = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
 
-    setEmployees(prevEmployees =>
-      prevEmployees.map(emp => {
-        if (emp.id === employeeId && emp.clockInTime !== null && emp.clockOutTime === null) {
-          const daily = calculateTimeDiff(emp.clockInTime, time);
-          const overtime = calculateOvertime(daily);
-          return { ...emp, status: 'off-duty', clockOutTime: time, dailyHours: daily, overtimeHours: overtime };
-        }
-        return emp;
-      })
-    );
-    toast({ title: "Clock Out Successful", description: `Employee ${employeeId} clocked out at ${time}.` });
+    const now = new Date();
+    const timeString = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+    
+    const daily = calculateTimeDiff(currentEmployeeAttendance.clockInTimestamp, now);
+    const overtime = calculateOvertime(daily);
+
+    try {
+      const attendanceDocRef = doc(db, "companies", user.companyId, "dailyAttendance", user.id + "_" + today);
+      await updateDoc(attendanceDocRef, {
+        clockOutTimestamp: now,
+        clockOutTime: timeString,
+        dailyHours: daily,
+        overtimeHours: overtime,
+        status: 'off-duty',
+        lastLocation: currentEmployeeAttendance?.lastLocation || 'Unknown',
+        updatedAt: serverTimestamp(),
+      });
+
+      toast({ title: "Clock Out Successful", description: `You clocked out at ${timeString}. Daily Hours: ${daily}, Overtime: ${overtime}.` });
+      fetchCurrentEmployeeAttendance(); // Re-fetch to update local state
+    } catch (error) {
+      console.error("Error clocking out:", error);
+      toast({ title: "Clock Out Failed", description: "Could not record clock out. Please try again.", variant: "destructive" });
+    }
   };
 
-  const handleShareLiveLocation = (employeeId: string, location: string) => {
-    if (employeeId === 'guest') {
-      toast({ title: "Login Required", description: "Please log in to use attendance features.", variant: "destructive" });
+  const handleShareLiveLocation = async (employeeId: string, location: string) => {
+    if (!user || !user.companyId || !currentEmployeeAttendance) {
+      toast({ title: "Login Required", description: "Please log in to share your location.", variant: "destructive" });
       return;
     }
-    setEmployees(prevEmployees =>
-      prevEmployees.map(emp =>
-        emp.id === employeeId ? { ...emp, lastLocation: location } : emp
-      )
-    );
+
+    try {
+      const attendanceDocRef = doc(db, "companies", user.companyId, "dailyAttendance", user.id + "_" + today);
+      await updateDoc(attendanceDocRef, {
+        lastLocation: location,
+        updatedAt: serverTimestamp(),
+      });
+      toast({ title: "Location Updated", description: `Your location has been updated to: ${location}.` });
+      fetchCurrentEmployeeAttendance(); // Re-fetch to update local state
+    } catch (error) {
+      console.error("Error updating location:", error);
+      toast({ title: "Location Update Failed", description: "Could not update location. Please try again.", variant: "destructive" });
+    }
   };
 
   const dailyAttendanceColumns: TableColumn<EmployeeAttendance>[] = [
@@ -266,7 +252,10 @@ const HouseAttendance = () => {
       },
     },
     { key: 'lastLocation', label: 'Last Shared Location' },
-    // Removed clockInTime, clockOutTime, dailyHours, overtimeHours, and actions from the table
+    { key: 'clockInTime', label: 'Clock In', sortable: true },
+    { key: 'clockOutTime', label: 'Clock Out', sortable: true },
+    { key: 'dailyHours', label: 'Daily Hours', sortable: true },
+    { key: 'overtimeHours', label: 'Overtime', sortable: true },
   ];
 
   const monthlyLogColumns: TableColumn<MonthlyLogEntry>[] = [
@@ -274,56 +263,28 @@ const HouseAttendance = () => {
     { key: 'status', label: 'Status', sortable: true },
   ];
 
-  // Filter monthly log for the current logged-in user only
-  const loggedInUserMonthlyLog = currentEmployee && currentEmployee.id !== 'guest'
-    ? mockMonthlyLogs.find(log => log.employeeId === currentEmployee.id)?.logs || []
-    : [];
+  // Filter monthly log for the current logged-in user only (Still mock, to be integrated with real data later)
+  const loggedInUserMonthlyLog: MonthlyLogEntry[] = []; // Placeholder for real data
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-8 lg:ml-[var(--sidebar-width)]">
       <h1 className="text-2xl sm:text-3xl font-bold">Attendance Management</h1>
 
-      {/* Employee Attendance Controls Component */}
-      <EmployeeAttendanceControls
-        employee={currentEmployee}
-        onClockIn={handleClockIn}
-        onClockOut={handleClockOut}
-        onShareLocation={handleShareLiveLocation}
-      />
-
-      {/* Overall Status */} 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"> 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Present Today</CardTitle>
-            <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{employees.filter(emp => emp.status === 'present').length}</div>
-            <p className="text-xs text-muted-foreground">Active employees in office</p>
+      {loadingAttendance ? (
+        <Card className="mb-6">
+          <CardContent className="flex justify-center items-center h-40">
+            <Clock className="h-8 w-8 animate-spin text-primary" />
+            <p className="ml-2">Loading your attendance...</p>
           </CardContent>
         </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">On Leave Today</CardTitle>
-            <PauseCircle className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{employees.filter(emp => emp.status === 'on-leave').length}</div>
-            <p className="text-xs text-muted-foreground">Employees currently on leave</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Off Duty</CardTitle>
-            <XCircle className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{employees.filter(emp => emp.status === 'off-duty').length}</div>
-            <p className="text-xs text-muted-foreground">Employees not scheduled today</p>
-          </CardContent>
-        </Card>
-      </div>
+      ) : (
+        <EmployeeAttendanceControls
+          employee={currentEmployeeForControls}
+          onClockIn={handleClockIn}
+          onClockOut={handleClockOut}
+          onShareLocation={handleShareLiveLocation}
+        />
+      )}
 
       {/* Daily Attendance Log */}
       <Card>
@@ -332,7 +293,7 @@ const HouseAttendance = () => {
         </CardHeader>
         <CardContent>
           <DataTable 
-            data={employees} 
+            data={currentEmployeeAttendance ? [currentEmployeeAttendance] : []} 
             columns={dailyAttendanceColumns} 
             searchable={true} 
             pagination={false}
@@ -346,7 +307,7 @@ const HouseAttendance = () => {
           <CardTitle>Your Monthly Attendance Log</CardTitle>
         </CardHeader>
         <CardContent>
-          {currentEmployee && currentEmployee.id !== 'guest' ? (
+          {user && currentEmployeeAttendance && currentEmployeeAttendance.id !== 'guest' ? (
             loggedInUserMonthlyLog.length > 0 ? (
               <DataTable 
                 data={loggedInUserMonthlyLog} 

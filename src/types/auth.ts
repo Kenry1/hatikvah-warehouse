@@ -1,4 +1,6 @@
 export interface User {
+  status: string;
+  lastLogin: any;
   id: string;
   username: string;
   email: string;
@@ -7,6 +9,7 @@ export interface User {
   companyName: string;
   createdAt: string;
   phoneNumber?: string; // Added phone number
+  department?: string; // Added department field
 }
 
 export interface Company {
@@ -14,6 +17,7 @@ export interface Company {
   name: string;
   createdAt: string;
   adminUserId: string;
+  trialEndDate?: string; // Add trialEndDate for free trial
 }
 
 export type UserRole = 
@@ -33,6 +37,8 @@ export type UserRole =
   | 'Procurement'
   | 'Management';
 
+import { Auth } from "firebase/auth"; // Import Auth type
+
 export interface AuthContextType {
   user: User | null;
   login: (companyName: string, username: string, password: string) => Promise<void>;
@@ -40,6 +46,7 @@ export interface AuthContextType {
   getCompanies: () => Company[];
   logout: () => void;
   isLoading: boolean;
+  auth: Auth; // Add auth property
 }
 
 export interface CreateCompanyData {

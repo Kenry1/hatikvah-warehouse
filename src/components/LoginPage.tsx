@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Building2, ArrowLeft, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 
 interface LoginPageProps {
   onLogin: (companyName: string, username: string, password: string) => Promise<void>;
@@ -15,12 +16,16 @@ interface LoginPageProps {
 }
 
 export function LoginPage({ onLogin, onBackToHome, isLoading }: LoginPageProps) {
-  const { getCompanies } = useAuth();
+  const { getCompanies, auth } = useAuth(); // Destructure auth from useAuth
   const [formData, setFormData] = useState({
     companyName: '',
     username: '',
     password: ''
   });
+  const [isForgotPasswordDialogOpen, setIsForgotPasswordDialogOpen] = useState(false);
+  const [resetEmail, setResetEmail] = useState('');
+  const [isSendingResetEmail, setIsSendingResetEmail] = useState(false);
+
   const { toast } = useToast();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -43,6 +48,53 @@ export function LoginPage({ onLogin, onBackToHome, isLoading }: LoginPageProps) 
         description: "Invalid company name, username, or password.",
         variant: "destructive"
       });
+    }
+  };
+
+  const handleForgotPassword = async () => {
+    if (!resetEmail) {
+      toast({
+        title: "Missing Email",
+        description: "Please enter your email address to reset your password.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setIsSendingResetEmail(true);
+    try {
+      // Firebase sendPasswordResetEmail
+      // Ensure 'auth' is available from the useAuth context
+      if (auth && auth.currentUser) { // Check if auth is defined and a user is signed in (though password reset doesn't require sign-in)
+        // Correct usage with sendPasswordResetEmail (it takes the auth instance and email)
+        await auth.sendPasswordResetEmail(resetEmail);
+        toast({
+          title: "Password Reset Email Sent",
+          description: "If an account with that email exists, a password reset link has been sent to your email address.",
+        });
+        setIsForgotPasswordDialogOpen(false);
+        setResetEmail('');
+      } else {
+        // Fallback or error if auth is not properly initialized or current user is null
+        // For password reset, current user is not strictly necessary, but 'auth' object is.
+        // It's safer to ensure auth is available.
+        // If auth isn't directly exposed or usable like this, the implementation needs to change.
+        // For now, assuming `auth` from context is the Firebase auth instance.
+        toast({
+          title: "Error",
+          description: "Firebase Auth instance not available. Please contact support.",
+          variant: "destructive"
+        });
+      }
+    } catch (error: any) {
+      console.error("Error sending password reset email:", error);
+      toast({
+        title: "Error Sending Reset Email",
+        description: error.message || "An unexpected error occurred. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSendingResetEmail(false);
     }
   };
 
@@ -114,6 +166,9 @@ export function LoginPage({ onLogin, onBackToHome, isLoading }: LoginPageProps) 
                   className="bg-white/10 border-white/30 text-white placeholder:text-white/50"
                   required
                 />
+                <Button variant="link" className="text-white/70 text-sm p-0 h-auto" onClick={() => setIsForgotPasswordDialogOpen(true)}>
+                  Forgot password?
+                </Button>
               </div>
 
               <div className="bg-accent/20 p-3 rounded-lg">
@@ -142,6 +197,49 @@ export function LoginPage({ onLogin, onBackToHome, isLoading }: LoginPageProps) 
             </form>
           </CardContent>
         </Card>
+
+        {/* Forgot Password Dialog */}
+        <Dialog open={isForgotPasswordDialogOpen} onOpenChange={setIsForgotPasswordDialogOpen}>
+          <DialogContent className="sm:max-w-[425px]">
+            <DialogHeader>
+              <DialogTitle>Forgot Password</DialogTitle>
+              <DialogDescription>
+                Enter your email address to receive a password reset link.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="resetEmail" className="text-right">
+                  Email
+                </Label>
+                <Input
+                  id="resetEmail"
+                  type="email"
+                  value={resetEmail}
+                  onChange={(e) => setResetEmail(e.target.value)}
+                  className="col-span-3"
+                  placeholder="your@example.com"
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button 
+                type="button" 
+                onClick={handleForgotPassword} 
+                disabled={isSendingResetEmail}
+              >
+                {isSendingResetEmail ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Sending...
+                  </>
+                ) : (
+                  'Send Reset Email'
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );

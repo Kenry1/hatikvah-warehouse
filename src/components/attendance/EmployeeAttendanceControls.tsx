@@ -22,19 +22,17 @@ const EmployeeAttendanceControls: React.FC<EmployeeAttendanceControlsProps> =
   ({ employee, onClockIn, onClockOut, onShareLocation }) => {
     const [locationStatus, setLocationStatus] = useState<'idle' | 'sending' | 'success' | 'error'>('idle');
 
-    // Removed the 'if (!employee)' check here, assuming employee is always provided
-    // and can be a guest employee.
-
     const isGuest = employee.id === 'guest';
 
     const isClockedIn = employee.clockInTime !== null && employee.clockOutTime === null;
-    const isClockedOut = employee.clockOutTime !== null;
+    // The isClockedOut state now primarily means the cycle (in and out) is complete for the current day, or not yet started.
+    const isClockedOut = employee.clockOutTime !== null; // User has clocked out
 
-    const handleBiometricShareLocation = () => {
+    const handleAttendanceAction = () => {
       if (isGuest) {
         toast({
           title: "Login Required",
-          description: "Please log in to share your location.",
+          description: "Please log in to record attendance.",
           variant: "destructive"
         });
         return;
@@ -55,20 +53,31 @@ const EmployeeAttendanceControls: React.FC<EmployeeAttendanceControlsProps> =
         (position) => {
           const { latitude, longitude } = position.coords;
           const newLocation = `Lat: ${latitude.toFixed(4)}, Lon: ${longitude.toFixed(4)}`;
-          onShareLocation(employee.id, newLocation);
+
+          if (!isClockedIn) { // If not clocked in, perform check-in
+            onClockIn(employee.id);
+            onShareLocation(employee.id, newLocation);
+            toast({
+              title: "Checked In!",
+              description: `You have successfully checked in from ${newLocation}`,
+            });
+          } else { // If clocked in, perform check-out
+            onClockOut(employee.id);
+            onShareLocation(employee.id, newLocation);
+            toast({
+              title: "Checked Out!",
+              description: `You have successfully checked out from ${newLocation}`,
+            });
+          }
           setLocationStatus('success');
-          toast({
-            title: "Location Shared",
-            description: `Your current location: ${newLocation}`,
-          });
           setTimeout(() => setLocationStatus('idle'), 2000); // Reset after 2 seconds
         },
         (error) => {
           console.error("Error getting location:", error);
           setLocationStatus('error');
           toast({
-            title: "Location Error",
-            description: "Could not get your location. Please enable location services.",
+            title: "Attendance Error",
+            description: "Could not record attendance. Please enable location services.",
             variant: "destructive"
           });
           setTimeout(() => setLocationStatus('idle'), 2000); // Reset after 2 seconds
@@ -105,10 +114,10 @@ const EmployeeAttendanceControls: React.FC<EmployeeAttendanceControlsProps> =
           </div>
 
           <div className="col-span-1 md:col-span-2 lg:col-span-4 flex flex-wrap items-center justify-center gap-4 mt-4">
-            {/* Biometric Button */}
+            {/* Biometric Button (CPU Style) */}
             <button
-              onClick={handleBiometricShareLocation}
-              disabled={locationStatus === 'sending' || isGuest}
+              onClick={handleAttendanceAction}
+              disabled={locationStatus === 'sending' || isGuest || (isClockedIn && isClockedOut)} // Disable if sending, guest, or already clocked in and out for the day
               className={`
                 relative flex items-center justify-center w-24 h-24 rounded-full p-2 group
                 transition-all duration-300 ease-in-out
@@ -147,20 +156,20 @@ const EmployeeAttendanceControls: React.FC<EmployeeAttendanceControlsProps> =
                   `}
                 />
               </svg>
-              <span className="sr-only">Share Live Location</span>
+              <span className="sr-only">{isClockedIn ? "Check Out" : "Check In"} and Share Live Location</span>
             </button>
 
             <div className="flex flex-col gap-2 flex-grow sm:flex-grow-0">
               <Button 
-                onClick={() => onClockIn(employee.id)}
-                disabled={isClockedIn || isGuest}
+                // onClick={() => onClockIn(employee.id)} // Removed onClick
+                disabled={isClockedIn || isGuest} // Disabled if already clocked in or guest
                 className="w-full text-lg py-6"
               >
                 <Clock className="h-5 w-5 mr-2" /> Check In
               </Button>
               <Button 
-                onClick={() => onClockOut(employee.id)}
-                disabled={!isClockedIn || isClockedOut || isGuest}
+                // onClick={() => onClockOut(employee.id)} // Removed onClick
+                disabled={!isClockedIn || isGuest} // Disabled if not clocked in or guest
                 className="w-full text-lg py-6"
               >
                 <Clock className="h-5 w-5 mr-2" /> Check Out

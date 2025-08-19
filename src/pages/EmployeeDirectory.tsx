@@ -1,111 +1,48 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Search, Mail, Phone, MapPin, Calendar, User, Building } from 'lucide-react';
-
-interface Employee {
-  id: string;
-  name: string;
-  email: string;
-  phone: string;
-  department: string;
-  position: string;
-  manager: string;
-  location: string;
-  startDate: string;
-  status: 'active' | 'on-leave' | 'inactive';
-  avatar?: string;
-  leaveStatus?: {
-    type: string;
-    startDate: string;
-    endDate: string;
-  };
-}
-
-const mockEmployees: Employee[] = [
-  {
-    id: '1',
-    name: 'John Smith',
-    email: 'john.smith@company.com',
-    phone: '+1 (555) 123-4567',
-    department: 'ICT',
-    position: 'Senior Developer',
-    manager: 'Alice Johnson',
-    location: 'New York Office',
-    startDate: '2022-03-15',
-    status: 'active'
-  },
-  {
-    id: '2',
-    name: 'Sarah Johnson',
-    email: 'sarah.johnson@company.com',
-    phone: '+1 (555) 234-5678',
-    department: 'Finance',
-    position: 'Financial Analyst',
-    manager: 'Michael Brown',
-    location: 'Chicago Office',
-    startDate: '2021-08-20',
-    status: 'on-leave',
-    leaveStatus: {
-      type: 'Annual Leave',
-      startDate: '2024-07-20',
-      endDate: '2024-07-25'
-    }
-  },
-  {
-    id: '3',
-    name: 'Mike Wilson',
-    email: 'mike.wilson@company.com',
-    phone: '+1 (555) 345-6789',
-    department: 'Operations',
-    position: 'Operations Manager',
-    manager: 'Jennifer Davis',
-    location: 'Los Angeles Office',
-    startDate: '2020-11-10',
-    status: 'active'
-  },
-  {
-    id: '4',
-    name: 'Emily Chen',
-    email: 'emily.chen@company.com',
-    phone: '+1 (555) 456-7890',
-    department: 'HR',
-    position: 'HR Specialist',
-    manager: 'Robert Wilson',
-    location: 'New York Office',
-    startDate: '2023-01-12',
-    status: 'active'
-  },
-  {
-    id: '5',
-    name: 'David Martinez',
-    email: 'david.martinez@company.com',
-    phone: '+1 (555) 567-8901',
-    department: 'Logistics',
-    position: 'Logistics Coordinator',
-    manager: 'Lisa Anderson',
-    location: 'Miami Office',
-    startDate: '2022-09-05',
-    status: 'on-leave',
-    leaveStatus: {
-      type: 'Sick Leave',
-      startDate: '2024-07-18',
-      endDate: '2024-07-22'
-    }
-  }
-];
+import { Search, Mail, Phone, MapPin, Calendar, User as UserIcon, Building } from 'lucide-react';
+import { User, getUserList } from '@/lib/firestoreHelpers';
+import { useAuth } from '@/contexts/AuthContext';
+import { LoadingSpinner } from '@/components/navigation/LoadingSpinner';
 
 export default function EmployeeDirectory() {
-  const [employees, setEmployees] = useState<Employee[]>(mockEmployees);
+  const { user: currentUser } = useAuth();
+  const [employees, setEmployees] = useState<User[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [departmentFilter, setDepartmentFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const getStatusColor = (status: string) => {
+  const fetchEmployees = async () => {
+    if (!currentUser?.companyId) {
+      setLoading(false);
+      setError("No company ID found for the current user.");
+      return;
+    }
+    setLoading(true);
+    setError(null);
+    try {
+      const fetchedUsers = await getUserList(currentUser.companyId);
+      setEmployees(fetchedUsers);
+    } catch (err) {
+      console.error("Failed to fetch employees:", err);
+      setError("Failed to load employees.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchEmployees();
+  }, [currentUser?.companyId]);
+
+  const getStatusColor = (status: string | undefined) => {
     switch (status) {
       case 'active':
         return 'bg-green-100 text-green-800 border-green-200';
@@ -118,8 +55,8 @@ export default function EmployeeDirectory() {
     }
   };
 
-  const getDepartmentColor = (department: string) => {
-    const colors = {
+  const getDepartmentColor = (department: string | undefined) => {
+    const colors: { [key: string]: string } = {
       'ICT': 'bg-blue-100 text-blue-800 border-blue-200',
       'Finance': 'bg-green-100 text-green-800 border-green-200',
       'Operations': 'bg-purple-100 text-purple-800 border-purple-200',
@@ -127,23 +64,32 @@ export default function EmployeeDirectory() {
       'Logistics': 'bg-orange-100 text-orange-800 border-orange-200',
       'Safety': 'bg-red-100 text-red-800 border-red-200'
     };
-    return colors[department as keyof typeof colors] || 'bg-gray-100 text-gray-800 border-gray-200';
+    return colors[department || ''] || 'bg-gray-100 text-gray-800 border-gray-200';
   };
 
   const filteredEmployees = employees.filter(employee => {
-    const matchesSearch = employee.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         employee.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         employee.position.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSearch = (employee.username?.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                           employee.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                           employee.position?.toLowerCase().includes(searchTerm.toLowerCase()));
     const matchesDepartment = departmentFilter === 'all' || employee.department === departmentFilter;
     const matchesStatus = statusFilter === 'all' || employee.status === statusFilter;
     return matchesSearch && matchesDepartment && matchesStatus;
   });
 
-  const getInitials = (name: string) => {
+  const getInitials = (name: string | undefined) => {
+    if (!name) return '';
     return name.split(' ').map(n => n[0]).join('').toUpperCase();
   };
 
-  const departments = [...new Set(employees.map(emp => emp.department))];
+  const departments = [...new Set(employees.map(emp => emp.department).filter(Boolean))] as string[];
+
+  if (loading) {
+    return <LoadingSpinner />;
+  }
+
+  if (error) {
+    return <div className="p-6 text-center text-red-500">Error: {error}</div>;
+  }
 
   return (
     <div className="space-y-6">
@@ -159,7 +105,7 @@ export default function EmployeeDirectory() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Employees</CardTitle>
-            <User className="h-4 w-4 text-muted-foreground" />
+            <UserIcon className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{employees.length}</div>
@@ -168,11 +114,11 @@ export default function EmployeeDirectory() {
             </p>
           </CardContent>
         </Card>
-        
+
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Active</CardTitle>
-            <User className="h-4 w-4 text-muted-foreground" />
+            <UserIcon className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-green-600">
@@ -183,7 +129,7 @@ export default function EmployeeDirectory() {
             </p>
           </CardContent>
         </Card>
-        
+
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">On Leave</CardTitle>
@@ -198,7 +144,7 @@ export default function EmployeeDirectory() {
             </p>
           </CardContent>
         </Card>
-        
+
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Departments</CardTitle>
@@ -226,7 +172,7 @@ export default function EmployeeDirectory() {
         </div>
         <Select value={departmentFilter} onValueChange={setDepartmentFilter}>
           <SelectTrigger className="w-48">
-            <SelectValue />
+            <SelectValue placeholder="All Departments" />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Departments</SelectItem>
@@ -237,7 +183,7 @@ export default function EmployeeDirectory() {
         </Select>
         <Select value={statusFilter} onValueChange={setStatusFilter}>
           <SelectTrigger className="w-40">
-            <SelectValue />
+            <SelectValue placeholder="All Status" />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Status</SelectItem>
@@ -255,20 +201,24 @@ export default function EmployeeDirectory() {
             <CardHeader className="pb-4">
               <div className="flex items-center space-x-4">
                 <Avatar className="h-12 w-12">
-                  <AvatarImage src={employee.avatar} alt={employee.name} />
-                  <AvatarFallback>{getInitials(employee.name)}</AvatarFallback>
+                  <AvatarImage src={employee.avatar} alt={employee.username} />
+                  <AvatarFallback>{getInitials(employee.username)}</AvatarFallback>
                 </Avatar>
                 <div className="flex-1">
-                  <CardTitle className="text-lg">{employee.name}</CardTitle>
+                  <CardTitle className="text-lg">{employee.username}</CardTitle>
                   <CardDescription>{employee.position}</CardDescription>
                 </div>
                 <div className="flex flex-col gap-1">
-                  <Badge className={getDepartmentColor(employee.department)}>
-                    {employee.department}
-                  </Badge>
-                  <Badge className={getStatusColor(employee.status)}>
-                    {employee.status === 'on-leave' ? 'On Leave' : employee.status.charAt(0).toUpperCase() + employee.status.slice(1)}
-                  </Badge>
+                  {employee.department && (
+                    <Badge className={getDepartmentColor(employee.department)}>
+                      {employee.department}
+                    </Badge>
+                  )}
+                  {employee.status && (
+                    <Badge className={getStatusColor(employee.status)}>
+                      {employee.status === 'on-leave' ? 'On Leave' : employee.status.charAt(0).toUpperCase() + employee.status.slice(1)}
+                    </Badge>
+                  )}
                 </div>
               </div>
             </CardHeader>
@@ -281,34 +231,44 @@ export default function EmployeeDirectory() {
                   </div>
                 </div>
               )}
-              
+
               <div className="space-y-2 text-sm">
-                <div className="flex items-center gap-2">
-                  <Mail className="h-4 w-4 text-muted-foreground" />
-                  <a href={`mailto:${employee.email}`} className="text-primary hover:underline">
-                    {employee.email}
-                  </a>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Phone className="h-4 w-4 text-muted-foreground" />
-                  <a href={`tel:${employee.phone}`} className="text-primary hover:underline">
-                    {employee.phone}
-                  </a>
-                </div>
-                <div className="flex items-center gap-2">
-                  <MapPin className="h-4 w-4 text-muted-foreground" />
-                  <span>{employee.location}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <User className="h-4 w-4 text-muted-foreground" />
-                  <span>Reports to: {employee.manager}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Calendar className="h-4 w-4 text-muted-foreground" />
-                  <span>Started: {new Date(employee.startDate).toLocaleDateString()}</span>
-                </div>
+                {employee.email && (
+                  <div className="flex items-center gap-2">
+                    <Mail className="h-4 w-4 text-muted-foreground" />
+                    <a href={`mailto:${employee.email}`} className="text-primary hover:underline">
+                      {employee.email}
+                    </a>
+                  </div>
+                )}
+                {employee.phoneNumber && (
+                  <div className="flex items-center gap-2">
+                    <Phone className="h-4 w-4 text-muted-foreground" />
+                    <a href={`tel:${employee.phoneNumber}`} className="text-primary hover:underline">
+                      {employee.phoneNumber}
+                    </a>
+                  </div>
+                )}
+                {employee.location && (
+                  <div className="flex items-center gap-2">
+                    <MapPin className="h-4 w-4 text-muted-foreground" />
+                    <span>{employee.location}</span>
+                  </div>
+                )}
+                {employee.manager && (
+                  <div className="flex items-center gap-2">
+                    <UserIcon className="h-4 w-4 text-muted-foreground" />
+                    <span>Reports to: {employee.manager}</span>
+                  </div>
+                )}
+                {employee.startDate && (
+                  <div className="flex items-center gap-2">
+                    <Calendar className="h-4 w-4 text-muted-foreground" />
+                    <span>Started: {new Date(employee.startDate).toLocaleDateString()}</span>
+                  </div>
+                )}
               </div>
-              
+
               <div className="flex gap-2 pt-2">
                 <Button variant="outline" size="sm" className="flex-1">
                   <Mail className="h-3 w-3 mr-1" />
@@ -327,7 +287,7 @@ export default function EmployeeDirectory() {
       {filteredEmployees.length === 0 && (
         <Card>
           <CardContent className="text-center py-12">
-            <User className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+            <UserIcon className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
             <h3 className="text-lg font-semibold mb-2">No employees found</h3>
             <p className="text-muted-foreground">
               Try adjusting your search criteria or filters.

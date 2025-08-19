@@ -1,0 +1,230 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // --- Helper Functions ---
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+
+    function isInCompany(companyId) {
+      return isAuthenticated() && getUserData().data.companyId == companyId;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && getUserData().data.role == 'Admin';
+    }
+
+    function isHR() {
+      return isAuthenticated() && getUserData().data.role == 'HR';
+    }
+
+    function isICT() {
+      return isAuthenticated() && getUserData().data.role == 'ICT';
+    }
+
+    function isFinance() {
+      return isAuthenticated() && getUserData().data.role == 'Finance';
+    }
+
+    function isLogistics() {
+      return isAuthenticated() && getUserData().data.role == 'Logistics';
+    }
+
+    function isOperationsManager() {
+      return isAuthenticated() && getUserData().data.role == 'Operations Manager';
+    }
+
+    function isSafety() {
+      return isAuthenticated() && getUserData().data.role == 'Health and Safety';
+    }
+
+    function isManagement() {
+      return isAuthenticated() && getUserData().data.role == 'Management';
+    }
+
+    function isProcurement() {
+      return isAuthenticated() && getUserData().data.role == 'Procurement';
+    }
+    
+    function isWarehouse() {
+      return isAuthenticated() && getUserData().data.role == 'Warehouse';
+    }
+
+    function isProjectManager() {
+      return isAuthenticated() && getUserData().data.role == 'Project Manager';
+    }
+        
+    function isPlanning() {
+      return isAuthenticated() && getUserData().data.role == 'Planning';
+    }
+
+    function isSiteEngineer() {
+      return isAuthenticated() && getUserData().data.role == 'Site Engineer';
+    }
+        
+    // --- Collection-Specific Rules ---
+
+    // `companies` collection rules
+    match /companies/{companyId} {
+      allow create: if isAuthenticated() &&
+                           request.auth.uid == request.resource.data.adminUserId &&
+                           request.resource.data.keys().hasAll(['name', 'adminUserId', 'createdAt', 'trialEndDate']) &&
+                           request.resource.data.name is string &&
+                           request.resource.data.name.size() > 0 &&
+                           request.resource.data.adminUserId is string &&
+                           request.resource.data.createdAt == request.resource.data.createdAt &&
+                           request.resource.data.trialEndDate is string;
+
+      allow read: if true;
+      allow update: if isAdmin() &&
+                            isInCompany(companyId) &&
+                            request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name']);
+      allow delete: if false;
+
+      // `dailyAttendance` subcollection rules
+      match /dailyAttendance/{userId_date} {
+        allow read: if isAuthenticated() &&
+                            isInCompany(companyId) &&
+                            (userId_date.split('_')[0] == request.auth.uid || isAdmin() || isHR() || isManagement());
+        allow write: if isAuthenticated() &&
+                             isInCompany(companyId) &&
+                             (request.auth.uid == request.resource.data.id &&
+                              request.resource.data.date == userId_date.split('_')[1] &&
+                              (request.auth.uid + "_" + request.resource.data.date) == userId_date
+                             || isAdmin() || isHR() || isManagement());
+      }
+    }
+
+    // `users` collection rules
+    match /users/{userId} {
+      allow create: if isAuthenticated() &&
+                         (request.auth.uid == userId || (isICT() || isAdmin()) && isInCompany(request.resource.data.companyId)) && // Added ICT/Admin for create
+                         request.resource.data.keys().hasAll(['username', 'email', 'role', 'companyId', 'companyName', 'createdAt']) &&
+                         request.resource.data.email == request.auth.token.email &&
+                         request.resource.data.role is string &&
+                         request.resource.data.companyId is string &&
+                         request.resource.data.companyName is string &&
+                         request.resource.data.createdAt == request.time;
+
+      allow read: if isAuthenticated() &&
+                          (request.auth.uid == userId || (isAdmin() || isHR() || isICT()) && isInCompany(resource.data.companyId));
+
+      allow update: if isAuthenticated() &&
+                            request.auth.uid == userId &&
+                            request.resource.data.diff(resource.data).affectedKeys().hasOnly(['username', 'phoneNumber', 'avatar', 'status', 'leaveStatus']);
+      allow delete: if isAuthenticated() && (request.auth.uid == userId || (isICT() || isAdmin()) && isInCompany(resource.data.companyId)); // Allow user to delete their own account
+    }
+
+    // `itAssets` collection rules
+    match /itAssets/{assetId} {
+      allow read: if isAuthenticated() && isInCompany(resource.data.companyId);
+      allow write: if isAuthenticated() &&
+                           isInCompany(request.resource.data.companyId) &&
+                           (isICT() || isAdmin());
+    }
+
+    // `assetRequests` collection rules
+    match /assetRequests/{requestId} {
+      allow create: if isAuthenticated() && isInCompany(request.resource.data.companyId);
+      allow read: if isAuthenticated() &&
+                          isInCompany(resource.data.companyId) &&
+                          (request.auth.uid == resource.data.requesterId || isAdmin() || isOperationsManager());
+      allow update: if isAuthenticated() &&
+                            isInCompany(resource.data.companyId) &&
+                            (isAdmin() || isOperationsManager()) &&
+                            request.resource.data.diff(resource.data).affectedKeys().hasAny(['status', 'assignedTo', 'comments']);
+      allow delete: if false;
+    }
+
+    // `leaveRequests` collection rules
+    match /leaveRequests/{leaveId} {
+      allow create: if isAuthenticated() && isInCompany(request.resource.data.companyId);
+      allow read: if isAuthenticated() &&
+                          isInCompany(resource.data.companyId) &&
+                          (request.auth.uid == resource.data.employeeId || isAdmin() || isHR());
+      allow update: if isAuthenticated() &&
+                            isInCompany(resource.data.companyId) &&
+                            (isAdmin() || isHR()) &&
+                            request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'comments']);
+      allow delete: if isAuthenticated() && request.auth.uid == resource.data.employeeId;
+    }
+
+    // `materials` collection rules (from MaterialModal.tsx)
+    match /materials/{materialId} {
+      allow read: if isAuthenticated() && isInCompany(resource.data.companyId);
+      allow write: if isAuthenticated() &&
+                           isInCompany(request.resource.data.companyId) &&
+                           (isProcurement() || isAdmin() || isWarehouse());
+    }
+
+    // `suppliers` collection rules (from ProcurementDashboard.tsx)
+    match /suppliers/{supplierId} {
+      allow read: if isAuthenticated() && isInCompany(resource.data.companyId);
+      allow write: if isAuthenticated() &&
+                           isInCompany(request.resource.data.companyId) &&
+                           (isProcurement() || isAdmin());
+    }
+
+    // `safetyReports` collection rules (from SafetyReports.tsx)
+    match /safetyReports/{reportId} {
+      allow create: if isAuthenticated() && isInCompany(request.resource.data.companyId);
+      allow read: if isAuthenticated() &&
+                          isInCompany(resource.data.companyId) &&
+                          (request.auth.uid == resource.data.reporterId || isAdmin() || isSafety() || isManagement());
+      allow update: if isAuthenticated() &&
+                            isInCompany(resource.data.companyId) &&
+                            (isAdmin() || isSafety() || isManagement()) &&
+                            request.resource.data.diff(resource.data).affectedKeys().hasAny(['status', 'followUpRequired', 'description', 'comments']);
+      allow delete: if false;
+    }
+
+    // `financeRequests` collection rules (implied from pages)
+    match /financeRequests/{requestId} {
+      allow create: if isAuthenticated() && isInCompany(request.resource.data.companyId);
+      allow read: if isAuthenticated() &&
+                          isInCompany(resource.data.companyId) &&
+                          (request.auth.uid == resource.data.requesterId || isAdmin() || isFinance() || isManagement());
+      allow update: if isAuthenticated() &&
+                            isInCompany(resource.data.companyId) &&
+                            (isAdmin() || isFinance() || isManagement()) &&
+                            request.resource.data.diff(resource.data).affectedKeys().hasAny(['status', 'approvedAmount', 'notes']);
+      allow delete: if false;
+    }
+
+    // `houseAttendance` collection rules (implied from pages)
+    match /houseAttendance/{recordId} {
+      allow read: if isAuthenticated() &&
+                          isInCompany(resource.data.companyId) &&
+                          (isAdmin() || isHR() || isManagement());
+      allow write: if isAuthenticated() &&
+                           isInCompany(request.resource.data.companyId) &&
+                           (isAdmin() || isHR() || isManagement());
+    }
+
+    // `ittickets` collection rules (implied from pages, includes IncomingTickets)
+    match /ittickets/{ticketId} {
+      allow create: if isAuthenticated() && isInCompany(request.resource.data.companyId);
+      allow read: if isAuthenticated() &&
+                          isInCompany(resource.data.companyId) &&
+                          (request.auth.uid == resource.data.reporterId || isAdmin() || isICT());
+      allow update: if isAuthenticated() &&
+                            isInCompany(resource.data.companyId) &&
+                            (isAdmin() || isICT()) &&
+                            request.resource.data.diff(resource.data.data).affectedKeys().hasAny(['status', 'assignedTo', 'resolutionNotes', 'priority']);
+      allow delete: if false;
+    }
+
+    // `vehicles` collection rules (implied from pages)
+    match /vehicles/{vehicleId} {
+      allow read: if isAuthenticated() && isInCompany(resource.data.companyId);
+      allow write: if isAuthenticated() &&
+                           isInCompany(request.resource.data.companyId) &&
+                           (isAdmin() || isLogistics());
+    }
+  }
+}

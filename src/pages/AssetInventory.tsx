@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -10,117 +10,91 @@ import { Textarea } from '@/components/ui/textarea';
 import { Search, Monitor, Laptop, Server, Smartphone, Plus, Package } from 'lucide-react';
 import { format } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
-
-interface ITAsset {
-  id: string;
-  name: string;
-  type: 'Laptop' | 'Desktop' | 'Monitor' | 'Server' | 'Network Device' | 'Mobile Device' | 'Printer' | 'Other';
-  serialNumber: string;
-  status: 'In Stock' | 'Issued' | 'Under Maintenance' | 'Retired';
-  location: string;
-  assignedTo?: string;
-  purchaseDate: string;
-  warrantyEndDate?: string;
-}
-
-interface AssetRequest {
-  id: string;
-  assetId: string;
-  assetName: string;
-  requestType: 'Issuance' | 'Collection';
-  requester: string;
-  status: 'Pending' | 'Approved' | 'Rejected' | 'Completed';
-  requestDate: string;
-}
-
-const mockITAssets: ITAsset[] = [
-  {
-    id: 'ASSET-001',
-    name: 'Dell Latitude 7420',
-    type: 'Laptop',
-    serialNumber: 'SN-LPT-98765',
-    status: 'Issued',
-    location: 'Office A, Desk 101',
-    assignedTo: 'Alice Johnson',
-    purchaseDate: '2023-01-15',
-    warrantyEndDate: '2026-01-15',
-  },
-  {
-    id: 'ASSET-002',
-    name: 'HP EliteDesk 800 G6',
-    type: 'Desktop',
-    serialNumber: 'SN-DST-54321',
-    status: 'In Stock',
-    location: 'Warehouse, IT Section',
-    purchaseDate: '2023-03-20',
-  },
-  {
-    id: 'ASSET-003',
-    name: 'LG UltraFine 4K',
-    type: 'Monitor',
-    serialNumber: 'SN-MON-11223',
-    status: 'Issued',
-    location: 'Office B, Desk 205',
-    assignedTo: 'Bob Williams',
-    purchaseDate: '2023-02-10',
-  },
-  {
-    id: 'ASSET-004',
-    name: 'Cisco Catalyst 9300',
-    type: 'Network Device',
-    serialNumber: 'SN-NET-45678',
-    status: 'In Stock',
-    location: 'Server Room, Rack 3',
-    purchaseDate: '2022-11-01',
-    warrantyEndDate: '2025-11-01',
-  },
-  {
-    id: 'ASSET-005',
-    name: 'iPhone 13 Pro',
-    type: 'Mobile Device',
-    serialNumber: 'SN-MOB-12345',
-    status: 'Under Maintenance',
-    location: 'IT Repair Shop',
-    assignedTo: 'Charlie Brown',
-    purchaseDate: '2023-05-10',
-  },
-];
-
-const mockAssetRequests: AssetRequest[] = [
-  {
-    id: 'AR-001',
-    assetId: 'ASSET-002',
-    assetName: 'HP EliteDesk 800 G6',
-    requestType: 'Issuance',
-    requester: 'Diana Prince',
-    status: 'Pending',
-    requestDate: '2024-07-25',
-  },
-  {
-    id: 'AR-002',
-    assetId: 'ASSET-001',
-    assetName: 'Dell Latitude 7420',
-    requestType: 'Collection',
-    requester: 'Alice Johnson',
-    status: 'Completed',
-    requestDate: '2024-07-20',
-  },
-];
+import { ITAsset, AssetRequest, getITAssetList, addITAsset, getAssetRequestList, addAssetRequest } from '@/lib/firestoreHelpers';
+import { useAuth } from '@/contexts/AuthContext';
+import { LoadingSpinner } from '@/components/navigation/LoadingSpinner';
 
 export default function AssetInventory() {
-  const [assets, setAssets] = useState<ITAsset[]>(mockITAssets);
-  const [requests, setRequests] = useState<AssetRequest[]>(mockAssetRequests);
+  const { user: currentUser } = useAuth();
+  const [assets, setAssets] = useState<ITAsset[]>([]);
+  const [requests, setRequests] = useState<AssetRequest[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState('all');
   const [filterStatus, setFilterStatus] = useState('all');
   const [isRequestDialogOpen, setIsRequestDialogOpen] = useState(false);
+  const [isAddAssetDialogOpen, setIsAddAssetDialogOpen] = useState(false);
   const [newRequest, setNewRequest] = useState({
     assetId: '',
     requestType: 'Issuance' as 'Issuance' | 'Collection',
-    requester: 'Current User (Mock)', // Mock current user
+    requester: currentUser?.username || '', // Use current user's username
     description: '',
   });
+  const [newAsset, setNewAsset] = useState<Omit<ITAsset, 'id' | 'createdAt' | 'updatedAt' | 'companyId'>>({
+    name: '',
+    type: 'Other', // Default type
+    serialNumber: '',
+    status: 'In Stock', // Default status
+    location: '',
+    purchaseDate: format(new Date(), 'yyyy-MM-dd'), // Default to today
+  });
+  const [loadingAssets, setLoadingAssets] = useState(true);
+  const [loadingRequests, setLoadingRequests] = useState(true);
+  const [errorAssets, setErrorAssets] = useState<string | null>(null);
+  const [errorRequests, setErrorRequests] = useState<string | null>(null);
   const { toast } = useToast();
+
+  const fetchAssets = async () => {
+    if (!currentUser?.companyId) {
+      setLoadingAssets(false);
+      setErrorAssets("No company ID found for the current user.");
+      return;
+    }
+    setLoadingAssets(true);
+    setErrorAssets(null);
+    try {
+      const fetchedAssets = await getITAssetList(currentUser.companyId);
+      setAssets(fetchedAssets);
+    } catch (err) {
+      console.error("Failed to fetch assets:", err);
+      setErrorAssets("Failed to load assets.");
+      toast({
+        title: "Error",
+        description: "Failed to load asset data. Please try again later.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoadingAssets(false);
+    }
+  };
+
+  const fetchRequests = async () => {
+    if (!currentUser?.companyId) {
+      setLoadingRequests(false);
+      setErrorRequests("No company ID found for the current user.");
+      return;
+    }
+    setLoadingRequests(true);
+    setErrorRequests(null);
+    try {
+      const fetchedRequests = await getAssetRequestList(currentUser.companyId);
+      setRequests(fetchedRequests);
+    } catch (err) {
+      console.error("Failed to fetch requests:", err);
+      setErrorRequests("Failed to load requests.");
+      toast({
+        title: "Error",
+        description: "Failed to load asset request data. Please try again later.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoadingRequests(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchAssets();
+    fetchRequests();
+  }, [currentUser?.companyId]);
 
   const getAssetIcon = (type: string) => {
     switch (type) {
@@ -174,11 +148,66 @@ export default function AssetInventory() {
     return matchesSearch && matchesType && matchesStatus;
   });
 
-  const handleRequestSubmit = () => {
+  const handleAddAssetSubmit = async () => {
+    if (!newAsset.name || !newAsset.serialNumber || !newAsset.location) {
+      toast({
+        title: "Error",
+        description: "Please fill in all required asset fields.",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (!currentUser?.companyId) {
+      toast({
+        title: "Error",
+        description: "User company information is missing.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      await addITAsset({
+        ...newAsset,
+        companyId: currentUser.companyId,
+      });
+      toast({
+        title: 'Asset Added',
+        description: `${newAsset.name} has been added to the inventory.`,
+      });
+      setNewAsset({
+        name: '',
+        type: 'Other',
+        serialNumber: '',
+        status: 'In Stock',
+        location: '',
+        purchaseDate: format(new Date(), 'yyyy-MM-dd'),
+      });
+      setIsAddAssetDialogOpen(false);
+      fetchAssets(); // Re-fetch assets to show the new one
+    } catch (error) {
+      console.error("Error adding asset:", error);
+      toast({
+        title: 'Error',
+        description: 'Failed to add asset. Please try again.',
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleRequestSubmit = async () => {
     if (!newRequest.assetId || !newRequest.requestType) {
       toast({
         title: "Error",
         description: "Please select an asset and a request type.",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (!currentUser?.companyId || !currentUser?.username) {
+      toast({
+        title: "Error",
+        description: "User authentication information is missing.",
         variant: "destructive",
       });
       return;
@@ -194,23 +223,31 @@ export default function AssetInventory() {
       return;
     }
 
-    const newReq: AssetRequest = {
-      id: `AR-${(requests.length + 1).toString().padStart(3, '0')}`,
-      assetId: newRequest.assetId,
-      assetName: asset.name,
-      requestType: newRequest.requestType,
-      requester: newRequest.requester,
-      status: 'Pending',
-      requestDate: format(new Date(), 'yyyy-MM-dd'),
-    };
-
-    setRequests([...requests, newReq]);
-    setNewRequest({ assetId: '', requestType: 'Issuance', requester: 'Current User (Mock)', description: '' });
-    setIsRequestDialogOpen(false);
-    toast({
-      title: 'Request Submitted',
-      description: `Your ${newRequest.requestType} request for ${asset.name} has been submitted.`,
-    });
+    try {
+      await addAssetRequest({
+        assetId: newRequest.assetId,
+        assetName: asset.name,
+        requestType: newRequest.requestType,
+        requester: currentUser.username, // Use current user's username
+        status: 'Pending',
+        description: newRequest.description,
+        companyId: currentUser.companyId,
+      });
+      toast({
+        title: 'Request Submitted',
+        description: `Your ${newRequest.requestType} request for ${asset.name} has been submitted.`,
+      });
+      setNewRequest({ assetId: '', requestType: 'Issuance', requester: currentUser.username, description: '' });
+      setIsRequestDialogOpen(false);
+      fetchRequests(); // Re-fetch requests to show the new one
+    } catch (error) {
+      console.error("Error submitting request:", error);
+      toast({
+        title: 'Error',
+        description: 'Failed to submit request. Please try again.',
+        variant: "destructive",
+      });
+    }
   };
 
   return (
@@ -220,68 +257,160 @@ export default function AssetInventory() {
           <h1 className="text-2xl md:text-3xl font-bold">IT Asset Inventory</h1>
           <p className="text-muted-foreground text-sm md:text-base">Manage and track electronic and computing devices</p>
         </div>
-        <Dialog open={isRequestDialogOpen} onOpenChange={setIsRequestDialogOpen}>
-          <DialogTrigger asChild>
-            <Button className="gap-2">
-              <Plus className="h-4 w-4" />
-              Request Asset
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-md">
-            <DialogHeader>
-              <DialogTitle>Request Asset Issuance/Collection</DialogTitle>
-              <DialogDescription>
-                Submit a request for an IT asset.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="asset">Asset</Label>
-                <Select
-                  value={newRequest.assetId}
-                  onValueChange={(value) => setNewRequest(prev => ({ ...prev, assetId: value }))}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select an asset" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {assets.map(asset => (
-                      <SelectItem key={asset.id} value={asset.id}>
-                        {asset.name} ({asset.serialNumber})
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+        <div className="flex gap-2">
+          <Dialog open={isAddAssetDialogOpen} onOpenChange={setIsAddAssetDialogOpen}>
+            <DialogTrigger asChild>
+              <Button variant="outline" className="gap-2">
+                <Plus className="h-4 w-4" />
+                Add Asset
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-md">
+              <DialogHeader>
+                <DialogTitle>Add New IT Asset</DialogTitle>
+                <DialogDescription>
+                  Enter the details for the new IT asset.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="assetName">Asset Name</Label>
+                  <Input
+                    id="assetName"
+                    placeholder="e.g., Dell XPS 15"
+                    value={newAsset.name}
+                    onChange={(e) => setNewAsset(prev => ({ ...prev, name: e.target.value }))}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="assetType">Type</Label>
+                  <Select
+                    value={newAsset.type}
+                    onValueChange={(value: ITAsset['type']) => setNewAsset(prev => ({ ...prev, type: value }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select asset type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Laptop">Laptop</SelectItem>
+                      <SelectItem value="Desktop">Desktop</SelectItem>
+                      <SelectItem value="Monitor">Monitor</SelectItem>
+                      <SelectItem value="Server">Server</SelectItem>
+                      <SelectItem value="Network Device">Network Device</SelectItem>
+                      <SelectItem value="Mobile Device">Mobile Device</SelectItem>
+                      <SelectItem value="Printer">Printer</SelectItem>
+                      <SelectItem value="Other">Other</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="serialNumber">Serial Number</Label>
+                  <Input
+                    id="serialNumber"
+                    placeholder="SN-XYZ-12345"
+                    value={newAsset.serialNumber}
+                    onChange={(e) => setNewAsset(prev => ({ ...prev, serialNumber: e.target.value }))}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="location">Location</Label>
+                  <Input
+                    id="location"
+                    placeholder="e.g., Office A, Server Room"
+                    value={newAsset.location}
+                    onChange={(e) => setNewAsset(prev => ({ ...prev, location: e.target.value }))}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="purchaseDate">Purchase Date</Label>
+                  <Input
+                    id="purchaseDate"
+                    type="date"
+                    value={newAsset.purchaseDate}
+                    onChange={(e) => setNewAsset(prev => ({ ...prev, purchaseDate: e.target.value }))}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="warrantyEndDate">Warranty End Date (Optional)</Label>
+                  <Input
+                    id="warrantyEndDate"
+                    type="date"
+                    value={newAsset.warrantyEndDate || ''}
+                    onChange={(e) => setNewAsset(prev => ({ ...prev, warrantyEndDate: e.target.value }))}
+                  />
+                </div>
+                <Button onClick={handleAddAssetSubmit} className="w-full">Add Asset</Button>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="requestType">Request Type</Label>
-                <Select
-                  value={newRequest.requestType}
-                  onValueChange={(value: 'Issuance' | 'Collection') => setNewRequest(prev => ({ ...prev, requestType: value }))}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select request type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Issuance">Issuance</SelectItem>
-                    <SelectItem value="Collection">Collection</SelectItem>
-                  </SelectContent>
-                </Select>
+            </DialogContent>
+          </Dialog>
+
+          <Dialog open={isRequestDialogOpen} onOpenChange={setIsRequestDialogOpen}>
+            <DialogTrigger asChild>
+              <Button className="gap-2">
+                <Plus className="h-4 w-4" />
+                Request Asset
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-md">
+              <DialogHeader>
+                <DialogTitle>Request Asset Issuance/Collection</DialogTitle>
+                <DialogDescription>
+                  Submit a request for an IT asset.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="asset">Asset</Label>
+                  <Select
+                    value={newRequest.assetId}
+                    onValueChange={(value) => setNewRequest(prev => ({ ...prev, assetId: value }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select an asset" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {assets.length > 0 ? (
+                        assets.map(asset => (
+                          <SelectItem key={asset.id} value={asset.id!}>
+                            {asset.name} ({asset.serialNumber})
+                          </SelectItem>
+                        ))
+                      ) : (
+                        <SelectItem value="" disabled>No assets available</SelectItem>
+                      )}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="requestType">Request Type</Label>
+                  <Select
+                    value={newRequest.requestType}
+                    onValueChange={(value: 'Issuance' | 'Collection') => setNewRequest(prev => ({ ...prev, requestType: value }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select request type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Issuance">Issuance</SelectItem>
+                      <SelectItem value="Collection">Collection</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="description">Reason / Notes</Label>
+                  <Textarea
+                    id="description"
+                    placeholder="e.g., For new employee setup, faulty device return"
+                    value={newRequest.description}
+                    onChange={(e) => setNewRequest(prev => ({ ...prev, description: e.target.value }))}
+                    rows={3}
+                  />
+                </div>
+                <Button onClick={handleRequestSubmit} className="w-full">Submit Request</Button>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="description">Reason / Notes</Label>
-                <Textarea
-                  id="description"
-                  placeholder="e.g., For new employee setup, faulty device return"
-                  value={newRequest.description}
-                  onChange={(e) => setNewRequest(prev => ({ ...prev, description: e.target.value }))}
-                  rows={3}
-                />
-              </div>
-              <Button onClick={handleRequestSubmit} className="w-full">Submit Request</Button>
-            </div>
-          </DialogContent>
-        </Dialog>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
       <div className="flex flex-col sm:flex-row gap-4 items-stretch sm:items-center">
@@ -330,57 +459,63 @@ export default function AssetInventory() {
           <CardDescription>All electronic and computing devices in the inventory.</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b">
-                  <th className="text-left p-3">Asset ID</th>
-                  <th className="text-left p-3">Name</th>
-                  <th className="text-left p-3">Type</th>
-                  <th className="text-left p-3">S/N</th>
-                  <th className="text-left p-3">Status</th>
-                  <th className="text-left p-3">Location</th>
-                  <th className="text-left p-3">Assigned To</th>
-                  <th className="text-left p-3">Purchase Date</th>
-                  <th className="text-left p-3">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredAssets.length > 0 ? (
-                  filteredAssets.map(asset => (
-                    <tr key={asset.id} className="border-b hover:bg-muted/50">
-                      <td className="p-3 font-medium">{asset.id}</td>
-                      <td className="p-3">{asset.name}</td>
-                      <td className="p-3">
-                        <Badge variant="outline" className="flex items-center gap-1 w-fit">
-                          {getAssetIcon(asset.type)}
-                          {asset.type}
-                        </Badge>
-                      </td>
-                      <td className="p-3">{asset.serialNumber}</td>
-                      <td className="p-3">
-                        <Badge className={getStatusColor(asset.status)}>
-                          {asset.status}
-                        </Badge>
-                      </td>
-                      <td className="p-3">{asset.location}</td>
-                      <td className="p-3">{asset.assignedTo || 'N/A'}</td>
-                      <td className="p-3">{format(new Date(asset.purchaseDate), 'MMM dd, yyyy')}</td>
-                      <td className="p-3">
-                        <Button variant="ghost" size="sm">View</Button>
+          {loadingAssets ? (
+            <LoadingSpinner />
+          ) : errorAssets ? (
+            <div className="text-center text-red-500">Error: {errorAssets}</div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b">
+                    <th className="text-left p-3">Asset ID</th>
+                    <th className="text-left p-3">Name</th>
+                    <th className="text-left p-3">Type</th>
+                    <th className="text-left p-3">S/N</th>
+                    <th className="text-left p-3">Status</th>
+                    <th className="text-left p-3">Location</th>
+                    <th className="text-left p-3">Assigned To</th>
+                    <th className="text-left p-3">Purchase Date</th>
+                    <th className="text-left p-3">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredAssets.length > 0 ? (
+                    filteredAssets.map(asset => (
+                      <tr key={asset.id} className="border-b hover:bg-muted/50">
+                        <td className="p-3 font-medium">{asset.id}</td>
+                        <td className="p-3">{asset.name}</td>
+                        <td className="p-3">
+                          <Badge variant="outline" className="flex items-center gap-1 w-fit">
+                            {getAssetIcon(asset.type)}
+                            {asset.type}
+                          </Badge>
+                        </td>
+                        <td className="p-3">{asset.serialNumber}</td>
+                        <td className="p-3">
+                          <Badge className={getStatusColor(asset.status)}>
+                            {asset.status}
+                          </Badge>
+                        </td>
+                        <td className="p-3">{asset.location}</td>
+                        <td className="p-3">{asset.assignedTo || 'N/A'}</td>
+                        <td className="p-3">{format(new Date(asset.purchaseDate), 'MMM dd, yyyy')}</td>
+                        <td className="p-3">
+                          <Button variant="ghost" size="sm">View</Button>
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={9} className="p-3 text-center text-muted-foreground">
+                        No IT assets found matching your criteria.
                       </td>
                     </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td colSpan={9} className="p-3 text-center text-muted-foreground">
-                      No IT assets found matching your criteria.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -390,51 +525,57 @@ export default function AssetInventory() {
           <CardDescription>Track pending and completed requests for IT assets.</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b">
-                  <th className="text-left p-3">Request ID</th>
-                  <th className="text-left p-3">Asset</th>
-                  <th className="text-left p-3">Type</th>
-                  <th className="text-left p-3">Requester</th>
-                  <th className="text-left p-3">Status</th>
-                  <th className="text-left p-3">Request Date</th>
-                  <th className="text-left p-3">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {requests.length > 0 ? (
-                  requests.map(req => (
-                    <tr key={req.id} className="border-b hover:bg-muted/50">
-                      <td className="p-3 font-medium">{req.id}</td>
-                      <td className="p-3">{req.assetName}</td>
-                      <td className="p-3">{req.requestType}</td>
-                      <td className="p-3">{req.requester}</td>
-                      <td className="p-3">
-                        <Badge className={getStatusColor(req.status)}>
-                          {req.status}
-                        </Badge>
-                      </td>
-                      <td className="p-3">{format(new Date(req.requestDate), 'MMM dd, yyyy')}</td>
-                      <td className="p-3">
-                        <Button variant="ghost" size="sm">View</Button>
-                        {req.status === 'Pending' && (
-                          <Button variant="outline" size="sm" className="ml-1">Approve/Reject</Button>
-                        )}
+          {loadingRequests ? (
+            <LoadingSpinner />
+          ) : errorRequests ? (
+            <div className="text-center text-red-500">Error: {errorRequests}</div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b">
+                    <th className="text-left p-3">Request ID</th>
+                    <th className="text-left p-3">Asset</th>
+                    <th className="text-left p-3">Type</th>
+                    <th className="text-left p-3">Requester</th>
+                    <th className="text-left p-3">Status</th>
+                    <th className="text-left p-3">Request Date</th>
+                    <th className="text-left p-3">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {requests.length > 0 ? (
+                    requests.map(req => (
+                      <tr key={req.id} className="border-b hover:bg-muted/50">
+                        <td className="p-3 font-medium">{req.id}</td>
+                        <td className="p-3">{req.assetName}</td>
+                        <td className="p-3">{req.requestType}</td>
+                        <td className="p-3">{req.requester}</td>
+                        <td className="p-3">
+                          <Badge className={getStatusColor(req.status)}>
+                            {req.status}
+                          </Badge>
+                        </td>
+                        <td className="p-3">{req.requestDate ? format(new Date(req.requestDate.toDate()), 'MMM dd, yyyy') : 'N/A'}</td>
+                        <td className="p-3">
+                          <Button variant="ghost" size="sm">View</Button>
+                          {req.status === 'Pending' && (
+                            <Button variant="outline" size="sm" className="ml-1">Approve/Reject</Button>
+                          )}
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={7} className="p-3 text-center text-muted-foreground">
+                        No asset issuance or collection requests.
                       </td>
                     </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td colSpan={7} className="p-3 text-center text-muted-foreground">
-                      No asset issuance or collection requests.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

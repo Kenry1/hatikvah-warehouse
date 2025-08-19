@@ -110,7 +110,7 @@ export function HomePage({ onCompanyCreate, onSignInClick, isLoading = false }: 
           </h1>
           
           <p className="text-xl text-white/80 max-w-2xl mx-auto mb-12">
-            Complete multi-tenant SaaS platform for managing vehicle fleets, employee operations, 
+            Complete platform for managing vehicle fleets, employee operations, 
             project tracking, and departmental workflows in one unified system.
           </p>
 
@@ -131,7 +131,7 @@ export function HomePage({ onCompanyCreate, onSignInClick, isLoading = false }: 
               onClick={onSignInClick}
               className="border-white/30 text-white hover:bg-white/10 px-8 py-4 text-lg"
             >
-              Sign In to Existing Company
+              Sign In
             </Button>
           </div>
         </div>
