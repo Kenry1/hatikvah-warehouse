@@ -42,6 +42,7 @@ const UserManagement = () => {
     setLoading(true);
     setError(null);
     try {
+      // Remove or replace getUserList
       //const fetchedUsers = await getUserList(currentUser.companyId);
       //setEmployees(fetchedUsers);
     } catch (err) {
@@ -58,6 +59,7 @@ const UserManagement = () => {
   };
 
   useEffect(() => {
+    //Remove or replace fetchEmployees
     //fetchEmployees();
   }, [currentUser?.companyId]);
 
