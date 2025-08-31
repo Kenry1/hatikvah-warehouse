@@ -8,6 +8,7 @@ import { Building2, ArrowLeft, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { sendPasswordResetEmail } from "firebase/auth";
 
 interface LoginPageProps {
   onLogin: (companyName: string, username: string, password: string) => Promise<void>;
@@ -16,7 +17,7 @@ interface LoginPageProps {
 }
 
 export function LoginPage({ onLogin, onBackToHome, isLoading }: LoginPageProps) {
-  const { getCompanies, auth } = useAuth(); // Destructure auth from useAuth
+  const { getCompanies, auth } = useAuth();
   const [formData, setFormData] = useState({
     companyName: '',
     username: '',
@@ -63,11 +64,8 @@ export function LoginPage({ onLogin, onBackToHome, isLoading }: LoginPageProps) 
 
     setIsSendingResetEmail(true);
     try {
-      // Firebase sendPasswordResetEmail
-      // Ensure 'auth' is available from the useAuth context
-      if (auth && auth.currentUser) { // Check if auth is defined and a user is signed in (though password reset doesn't require sign-in)
-        // Correct usage with sendPasswordResetEmail (it takes the auth instance and email)
-        await auth.sendPasswordResetEmail(resetEmail);
+      if (auth) {
+        await sendPasswordResetEmail(auth, resetEmail);
         toast({
           title: "Password Reset Email Sent",
           description: "If an account with that email exists, a password reset link has been sent to your email address.",
@@ -75,11 +73,6 @@ export function LoginPage({ onLogin, onBackToHome, isLoading }: LoginPageProps) 
         setIsForgotPasswordDialogOpen(false);
         setResetEmail('');
       } else {
-        // Fallback or error if auth is not properly initialized or current user is null
-        // For password reset, current user is not strictly necessary, but 'auth' object is.
-        // It's safer to ensure auth is available.
-        // If auth isn't directly exposed or usable like this, the implementation needs to change.
-        // For now, assuming `auth` from context is the Firebase auth instance.
         toast({
           title: "Error",
           description: "Firebase Auth instance not available. Please contact support.",
@@ -172,12 +165,7 @@ export function LoginPage({ onLogin, onBackToHome, isLoading }: LoginPageProps) 
               </div>
 
               <div className="bg-accent/20 p-3 rounded-lg">
-                <p className="text-sm text-white/80">
-                  <strong>Demo Credentials:</strong><br />
-                  Company: TechCorp Solutions<br />
-                  Username: admin, finance, hr, management, safety, employee, implmanager, logistics, operations, planning, projectmgr, siteeng, warehouse, procurement<br />
-                  Password: password
-                </p>
+                
               </div>
               
               <Button
