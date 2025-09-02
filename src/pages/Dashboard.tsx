@@ -6,7 +6,7 @@ import { HRDashboard } from '@/components/dashboards/HRDashboard';
 import { SafetyDashboard } from '@/components/dashboards/SafetyDashboard';
 import { LogisticsDashboard } from '@/components/dashboards/LogisticsDashboard';
 import { OperationsDashboard } from '@/components/dashboards/OperationsDashboard';
-import { ImplementationManagerDashboard } from '@/components/dashboards/ImplementationManagerDashboard';
+import ImplementationManagerDashboard from '@/components/dashboards/ImplementationManagerDashboard';
 import { ProjectManagerDashboard } from '@/components/dashboards/ProjectManagerDashboard';
 import { SiteEngineerDashboard } from '@/components/dashboards/SiteEngineerDashboard';
 import { WarehouseDashboard } from '@/components/dashboards/WarehouseDashboard';

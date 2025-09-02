@@ -8,7 +8,7 @@ import { FinanceDashboard } from '@/components/dashboards/FinanceDashboard';
 import { EmployeeDashboard } from '@/components/dashboards/EmployeeDashboard';
 import { HRDashboard } from '@/components/dashboards/HRDashboard';
 import { SafetyDashboard } from '@/components/dashboards/SafetyDashboard';
-import { ImplementationManagerDashboard } from '@/components/dashboards/ImplementationManagerDashboard';
+import ImplementationManagerDashboard from '@/components/dashboards/ImplementationManagerDashboard';
 import { LogisticsDashboard } from '@/components/dashboards/LogisticsDashboard';
 import { OperationsDashboard } from '@/components/dashboards/OperationsDashboard';
 import { ProjectManagerDashboard } from '@/components/dashboards/ProjectManagerDashboard';

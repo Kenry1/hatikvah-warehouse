@@ -34,8 +34,8 @@ export const WarehouseDashboard = () => {
     <div className="min-h-screen bg-background">
       {/* Header */}
       <header className="border-b bg-card">
-        <div className="container mx-auto px-6 py-4">
-          <div className="flex items-center justify-between">
+        <div className="container mx-auto px-4 sm:px-6 py-4">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 sm:gap-0">
             <div className="flex items-center space-x-3">
               <Package className="h-8 w-8 text-primary" />
               <div>
@@ -43,7 +43,7 @@ export const WarehouseDashboard = () => {
                 <p className="text-sm text-muted-foreground">Warehouse Inventory Management</p>
               </div>
             </div>
-            <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-2 sm:space-x-4">
               <Badge variant="outline" className="text-yellow-500 border-yellow-500">
                 {lowStockItems} Low Stock
               </Badge>
@@ -55,7 +55,7 @@ export const WarehouseDashboard = () => {
         </div>
       </header>
 
-      <main className="container mx-auto px-6 py-6">
+      <main className="container mx-auto px-4 sm:px-6 py-6">
         {/* Alert for low stock */}
         {lowStockItems > 0 && (
           <Alert className="mb-6 border-yellow-500 bg-yellow-500/10 text-yellow-700">
@@ -67,7 +67,7 @@ export const WarehouseDashboard = () => {
         )}
 
         {/* Dashboard Metrics */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">Total Items</CardTitle>
@@ -111,7 +111,7 @@ export const WarehouseDashboard = () => {
 
         {/* Main Tabs */}
         <Tabs defaultValue="inventory" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-1 sm:grid-cols-2 md:grid-cols-4">
             <TabsTrigger value="inventory">Inventory Overview</TabsTrigger>
             <TabsTrigger value="requests">Issue Requests</TabsTrigger>
             <TabsTrigger value="add-stock">Add Stock</TabsTrigger>
