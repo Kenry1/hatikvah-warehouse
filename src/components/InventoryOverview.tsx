@@ -26,21 +26,20 @@ export const InventoryOverview = ({
 
   // Filter data based on search and filters
   const filteredData = data.filter(item => {
-    const matchesSearch = item.itemName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         item.itemCode.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    const matchesCategory = categoryFilter === "all" || 
-                           item.category.toLowerCase() === categoryFilter.toLowerCase();
-    
+    const itemName = item.itemName || "";
+    const itemCode = item.itemCode || "";
+    const category = typeof item.category === "string" ? item.category : "unknown";
+    const matchesSearch = itemName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         itemCode.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesCategory = categoryFilter === "all" || category.toLowerCase() === categoryFilter.toLowerCase();
     let matchesStatus = true;
     if (statusFilter === "low stock") {
-      matchesStatus = item.quantity <= item.reorderLevel;
+      matchesStatus = (item.quantity ?? 0) <= (item.reorderLevel ?? 0);
     } else if (statusFilter === "out of stock") {
-      matchesStatus = item.quantity === 0;
+      matchesStatus = (item.quantity ?? 0) === 0;
     } else if (statusFilter === "in stock") {
-      matchesStatus = item.quantity > item.reorderLevel;
+      matchesStatus = (item.quantity ?? 0) > (item.reorderLevel ?? 0);
     }
-    
     return matchesSearch && matchesCategory && matchesStatus;
   });
 
@@ -54,7 +53,7 @@ export const InventoryOverview = ({
     }
   };
 
-  const categories = [...new Set(data.map(item => item.category))];
+  const categories = [...new Set(data.map(item => typeof item.category === "string" ? item.category : "unknown"))];
 
   return (
     <Card>
@@ -125,16 +124,16 @@ export const InventoryOverview = ({
                   </TableCell>
                 </TableRow>
               ) : (
-                filteredData.map((item) => (
-                  <TableRow key={item.itemCode}>
+                filteredData.map((item, idx) => (
+                  <TableRow key={item.itemCode || `row-${idx}`}>
                     <TableCell className="font-medium">{item.itemName}</TableCell>
                     <TableCell className="font-mono text-sm">{item.itemCode}</TableCell>
-                    <TableCell>{item.category}</TableCell>
+                    <TableCell>{typeof item.category === "string" ? item.category : "unknown"}</TableCell>
                     <TableCell className="text-right font-medium">{item.quantity}</TableCell>
-                    <TableCell>{item.unit}</TableCell>
-                    <TableCell className="text-right">{item.reorderLevel}</TableCell>
+                    <TableCell>{item.unit || ""}</TableCell>
+                    <TableCell className="text-right">{item.reorderLevel ?? 0}</TableCell>
                     <TableCell>{getStockStatus(item)}</TableCell>
-                    <TableCell className="text-right">{item.unitPrice.toFixed(2)}</TableCell>
+                    <TableCell className="text-right">{typeof item.unitPrice === "number" ? item.unitPrice.toFixed(2) : "0.00"}</TableCell>
                   </TableRow>
                 ))
               )}

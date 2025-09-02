@@ -7,6 +7,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { PlusCircle, PackagePlus } from "lucide-react";
 import { useToast } from "../hooks/use-toast";
+import { db } from "../lib/firebase";
+import { collection, addDoc, Timestamp } from "firebase/firestore";
 
 const categories = [
 	"Safety Equipment",
@@ -38,7 +40,7 @@ export const AddStockForm = ({ onStockAdded }) => {
 		setNewItem((prev) => ({ ...prev, [name]: value }));
 	};
 
-	const handleSubmit = (e) => {
+	const handleSubmit = async (e) => {
 		e.preventDefault();
 		if (!newItem.itemName || !newItem.quantity || !newItem.category) {
 			toast({
@@ -55,27 +57,34 @@ export const AddStockForm = ({ onStockAdded }) => {
 			quantity: parseInt(newItem.quantity, 10),
 			reorderLevel: parseInt(newItem.reorderLevel, 10) || 0,
 			unitPrice: parseFloat(newItem.unitPrice) || 0,
+			createdAt: Timestamp.now(),
 		};
 
-		onStockAdded(newStockItem);
-
-		toast({
-			title: "Stock Added Successfully",
-			description: `${newItem.itemName} has been added to the inventory.`,
-			className: "bg-green-500 text-white",
-		});
-
-		// Reset form
-		setNewItem({
-			itemName: "",
-			itemCode: "",
-			quantity: "",
-			unit: "pcs",
-			reorderLevel: "",
-			category: "",
-			unitPrice: "",
-			notes: "",
-		});
+		try {
+			await addDoc(collection(db, "solar_warehouse"), newStockItem);
+			onStockAdded(newStockItem);
+			toast({
+				title: "Stock Added Successfully",
+				description: `${newItem.itemName} has been added to the inventory and synced to the database.`,
+				className: "bg-green-500 text-white",
+			});
+			setNewItem({
+				itemName: "",
+				itemCode: "",
+				quantity: "",
+				unit: "pcs",
+				reorderLevel: "",
+				category: "",
+				unitPrice: "",
+				notes: "",
+			});
+		} catch (err) {
+			toast({
+				title: "Database Error",
+				description: "Failed to add item to Firestore. Please try again.",
+				variant: "destructive",
+			});
+		}
 	};
 
 	return (

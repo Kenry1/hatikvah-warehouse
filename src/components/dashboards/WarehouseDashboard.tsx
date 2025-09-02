@@ -43,7 +43,11 @@ export const WarehouseDashboard = () => {
   // Calculate dashboard metrics
   const totalItems = inventoryData.length;
   const lowStockItems = inventoryData.filter(item => item.quantity <= item.reorderLevel).length;
-  const totalValue = inventoryData.reduce((sum, item) => sum + (item.quantity * item.unitPrice), 0);
+  const totalValue = inventoryData.reduce((sum, item) => {
+    const quantity = typeof item.quantity === "number" ? item.quantity : 0;
+    const unitPrice = typeof item.unitPrice === "number" ? item.unitPrice : 0;
+    return sum + (quantity * unitPrice);
+  }, 0);
   const pendingRequests = mockRequests.filter(req => req.status === "pending").length;
 
   return (
