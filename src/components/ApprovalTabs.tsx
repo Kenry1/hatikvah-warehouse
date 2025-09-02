@@ -165,14 +165,14 @@ const getStatusIcon = (status: string) => {
 }
 
 const RequestCard = ({ request }: { request: RequestItem }) => (
-  <Card className="bg-gradient-card border shadow-sm hover:shadow-md transition-all">
+  <Card className="bg-gradient-card border shadow-sm hover:shadow-md transition-all px-2 py-2 sm:px-4 sm:py-4">
     <CardHeader className="pb-3">
-      <div className="flex items-start justify-between">
+      <div className="flex flex-col sm:flex-row items-start justify-between gap-2">
         <div className="flex-1">
-          <CardTitle className="text-lg font-semibold text-foreground mb-2">
+          <CardTitle className="text-base sm:text-lg font-semibold text-foreground mb-2">
             {request.title}
           </CardTitle>
-          <div className="flex items-center gap-4 text-sm text-muted-foreground">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-xs sm:text-sm text-muted-foreground">
             <div className="flex items-center gap-1">
               <User className="h-3 w-3" />
               {request.requestor}
@@ -187,7 +187,7 @@ const RequestCard = ({ request }: { request: RequestItem }) => (
             </div>
           </div>
         </div>
-        <div className="flex flex-col items-end gap-2">
+        <div className="flex flex-row sm:flex-col items-end gap-2">
           <Badge className={getStatusColor(request.status)}>
             {getStatusIcon(request.status)}
             <span className="ml-1 capitalize">{request.status}</span>
@@ -199,9 +199,9 @@ const RequestCard = ({ request }: { request: RequestItem }) => (
       </div>
     </CardHeader>
     <CardContent>
-      <p className="text-sm text-muted-foreground mb-4">{request.description}</p>
+      <p className="text-xs sm:text-sm text-muted-foreground mb-4">{request.description}</p>
       {request.status === "pending" && (
-        <div className="flex gap-2">
+        <div className="flex flex-col sm:flex-row gap-2">
           <Button size="sm" className="flex-1">
             <CheckCircle className="h-4 w-4 mr-2" />
             Approve
@@ -220,27 +220,27 @@ export function ApprovalTabs() {
   return (
     <div className="space-y-6">
       <Tabs defaultValue="fuel" className="w-full">
-        <TabsList className="grid w-full grid-cols-4 bg-muted">
-          <TabsTrigger value="fuel" className="flex items-center gap-2">
+        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 bg-muted gap-2 sm:gap-4 p-1 sm:p-2 rounded-lg">
+          <TabsTrigger value="fuel" className="flex items-center gap-2 py-2 px-2 sm:py-3 sm:px-4 text-xs sm:text-sm">
             <Fuel className="h-4 w-4" />
             Fuel Requests
           </TabsTrigger>
-          <TabsTrigger value="material" className="flex items-center gap-2">
+          <TabsTrigger value="material" className="flex items-center gap-2 py-2 px-2 sm:py-3 sm:px-4 text-xs sm:text-sm">
             <Package className="h-4 w-4" />
             Material Requests
           </TabsTrigger>
-          <TabsTrigger value="finance" className="flex items-center gap-2">
+          <TabsTrigger value="finance" className="flex items-center gap-2 py-2 px-2 sm:py-3 sm:px-4 text-xs sm:text-sm">
             <CreditCard className="h-4 w-4" />
             Finance Requests
           </TabsTrigger>
-          <TabsTrigger value="records" className="flex items-center gap-2">
+          <TabsTrigger value="records" className="flex items-center gap-2 py-2 px-2 sm:py-3 sm:px-4 text-xs sm:text-sm">
             <CheckCircle className="h-4 w-4" />
             Approval Records
           </TabsTrigger>
         </TabsList>
 
         <TabsContent value="fuel" className="mt-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
             {fuelRequests.map((request) => (
               <RequestCard key={request.id} request={request} />
             ))}
@@ -248,7 +248,7 @@ export function ApprovalTabs() {
         </TabsContent>
 
         <TabsContent value="material" className="mt-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
             {materialRequests.map((request) => (
               <RequestCard key={request.id} request={request} />
             ))}
@@ -256,7 +256,7 @@ export function ApprovalTabs() {
         </TabsContent>
 
         <TabsContent value="finance" className="mt-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
             {financeRequests.map((request) => (
               <RequestCard key={request.id} request={request} />
             ))}

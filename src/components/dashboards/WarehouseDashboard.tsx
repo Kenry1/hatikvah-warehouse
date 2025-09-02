@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -9,9 +10,24 @@ import { IssueRequestsManager } from "../IssueRequestsManager";
 import { AddStockForm } from "../AddStockForm";
 import { AuditTrail } from "../AuditTrail";
 import { mockInventoryData, mockRequests } from "../../lib/mockData";
+import { db } from "../../lib/firebase";
+import { collection, getDocs } from "firebase/firestore";
 
 export const WarehouseDashboard = () => {
-  const [inventoryData, setInventoryData] = useState(mockInventoryData);
+  const [inventoryData, setInventoryData] = useState([]);
+  // Fetch inventory from Firestore solar_warehouse collection
+  useEffect(() => {
+    async function fetchInventory() {
+      try {
+        const snapshot = await getDocs(collection(db, "solar_warehouse"));
+        const items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        setInventoryData(items);
+      } catch (err) {
+        console.error("Error fetching inventory:", err);
+      }
+    }
+    fetchInventory();
+  }, []);
   const [searchTerm, setSearchTerm] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("all");
 

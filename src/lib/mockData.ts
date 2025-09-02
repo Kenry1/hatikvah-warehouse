@@ -1,3 +1,5 @@
+import type { MaterialRequest } from "../types/inventory";
+
 export interface InventoryItem {
   itemName: string;
   itemCode: string;
@@ -57,5 +59,204 @@ export const mockRequests: IssueRequest[] = [
 export const mockTransactions: Transaction[] = [
     { type: 'Issued', itemName: 'Patch Panels', itemCode: 'PP001', quantity: 5, user: 'Jane Doe', timestamp: '2024-12-16 10:30', ref: 'REQ004' },
     { type: 'Received', itemName: 'Work Gloves', itemCode: 'WG001', quantity: 50, user: 'Alex Lee', timestamp: '2024-12-16 09:00', ref: 'INV-2024-12-16' },
+];
+
+// Mock sites
+export const sites = [
+  {
+    id: 'site-1',
+    name: 'Site Alpha',
+    location: 'Nairobi',
+    contactPerson: 'John Smith',
+    phone: '0712345678',
+    active: true
+  },
+  {
+    id: 'site-2',
+    name: 'Site Beta',
+    location: 'Mombasa',
+    contactPerson: 'Jane Doe',
+    phone: '0723456789',
+    active: true
+  },
+  {
+    id: 'site-3',
+    name: 'Site Gamma',
+    location: 'Kisumu',
+    contactPerson: 'Alex Lee',
+    phone: '0734567890',
+    active: false
+  }
+];
+
+// Mock materials
+export const materials = [
+  {
+    id: 'mat-1',
+    name: 'Cement',
+    category: 'Building',
+    unit: 'bags',
+    unitPrice: 650,
+    minStockLevel: 50
+  },
+  {
+    id: 'mat-2',
+    name: 'Steel Rods',
+    category: 'Building',
+    unit: 'pieces',
+    unitPrice: 1200,
+    minStockLevel: 30
+  },
+  {
+    id: 'mat-3',
+    name: 'Bricks',
+    category: 'Building',
+    unit: 'pieces',
+    unitPrice: 15,
+    minStockLevel: 500
+  }
+];
+
+// Mock warehouse stock
+export const warehouseStock = [
+  {
+    materialId: 'mat-1',
+    materialName: 'Cement',
+    category: 'Building',
+    unit: 'bags',
+    availableQuantity: 120,
+    minStockLevel: 50,
+    unitPrice: 650,
+    totalValue: 78000,
+    lastUpdated: new Date(),
+    totalRequests: 30,
+    fulfilledRequests: 25,
+    pendingRequests: 3,
+    partialRequests: 2,
+    totalStockValue: 78000,
+    priorityBreakdown: { urgent: 5, high: 10, medium: 10, low: 5 },
+    totalRequestsValue: 19500,
+    siteId: 'site-1'
+  },
+  {
+    materialId: 'mat-2',
+    materialName: 'Steel Rods',
+    category: 'Building',
+    unit: 'pieces',
+    availableQuantity: 40,
+    minStockLevel: 30,
+    unitPrice: 1200,
+    totalValue: 48000,
+    lastUpdated: new Date(),
+    totalRequests: 20,
+    fulfilledRequests: 15,
+    pendingRequests: 3,
+    partialRequests: 2,
+    totalStockValue: 48000,
+    priorityBreakdown: { urgent: 2, high: 8, medium: 6, low: 4 },
+    totalRequestsValue: 24000,
+    siteId: 'site-2'
+  },
+  {
+    materialId: 'mat-3',
+    materialName: 'Bricks',
+    category: 'Building',
+    unit: 'pieces',
+    availableQuantity: 1000,
+    minStockLevel: 500,
+    unitPrice: 15,
+    totalValue: 15000,
+    lastUpdated: new Date(),
+    totalRequests: 50,
+    fulfilledRequests: 40,
+    pendingRequests: 5,
+    partialRequests: 5,
+    totalStockValue: 15000,
+    priorityBreakdown: { urgent: 10, high: 15, medium: 15, low: 10 },
+    totalRequestsValue: 7500,
+    siteId: 'site-3'
+  }
+];
+
+// Mock material requests
+export const materialRequests: MaterialRequest[] = [
+  {
+    id: 'req-1',
+    siteId: 'site-1',
+    siteName: 'Site Alpha',
+    requestDate: new Date('2025-08-01'),
+    requestedBy: 'John Smith',
+    priority: 'high',
+    status: 'fulfilled',
+    items: [
+      {
+        materialId: 'mat-1',
+        materialName: 'Cement',
+        category: 'Building',
+        unit: 'bags',
+        requestedQuantity: 40,
+        availableQuantity: 120,
+        unitPrice: 650,
+        totalCost: 26000,
+        status: 'fulfilled'
+      }
+    ],
+    totalCost: 26000,
+    notes: 'Urgent for foundation work',
+    approvedBy: 'Manager A',
+    approvedDate: new Date('2025-08-02'),
+    fulfilledDate: new Date('2025-08-03')
+  },
+  {
+    id: 'req-2',
+    siteId: 'site-2',
+    siteName: 'Site Beta',
+    requestDate: new Date('2025-08-03'),
+    requestedBy: 'Jane Doe',
+    priority: 'urgent',
+    status: 'pending',
+    items: [
+      {
+        materialId: 'mat-2',
+        materialName: 'Steel Rods',
+        category: 'Building',
+        unit: 'pieces',
+        requestedQuantity: 15,
+        availableQuantity: 40,
+        unitPrice: 1200,
+        totalCost: 18000,
+        status: 'pending'
+      }
+    ],
+    totalCost: 18000,
+    notes: 'Required for roof support',
+    approvedBy: 'Manager B'
+  },
+  {
+    id: 'req-3',
+    siteId: 'site-3',
+    siteName: 'Site Gamma',
+    requestDate: new Date('2025-08-05'),
+    requestedBy: 'Alex Lee',
+    priority: 'medium',
+    status: 'partial',
+    items: [
+      {
+        materialId: 'mat-3',
+        materialName: 'Bricks',
+        category: 'Building',
+        unit: 'pieces',
+        requestedQuantity: 500,
+        availableQuantity: 1000,
+        unitPrice: 15,
+        totalCost: 7500,
+        status: 'partial'
+      }
+    ],
+    totalCost: 7500,
+    notes: 'For wall construction',
+    approvedBy: 'Manager C',
+    approvedDate: new Date('2025-08-06')
+  }
 ];
 

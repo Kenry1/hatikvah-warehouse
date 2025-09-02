@@ -12,7 +12,7 @@ import ImplementationManagerDashboard from '@/components/dashboards/Implementati
 import { LogisticsDashboard } from '@/components/dashboards/LogisticsDashboard';
 import { OperationsDashboard } from '@/components/dashboards/OperationsDashboard';
 import { ProjectManagerDashboard } from '@/components/dashboards/ProjectManagerDashboard';
-import { SiteEngineerDashboard } from '@/components/dashboards/SiteEngineerDashboard';
+import SiteEngineerDashboard from '@/components/dashboards/SiteEngineerDashboard';
 import { WarehouseDashboard } from '@/components/dashboards/WarehouseDashboard';
 import { AdminDashboard } from '@/components/dashboards/AdminDashboard';
 import { ProcurementDashboard } from '@/components/dashboards/ProcurementDashboard';
