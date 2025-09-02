@@ -46,6 +46,7 @@ export interface MaterialRequest {
   siteName: string;
   requestDate: Date;
   requestedBy: string;
+  requestedByUsername?: string;
   priority: 'low' | 'medium' | 'high' | 'urgent';
   status: 'pending' | 'fulfilled' | 'partial' | 'cancelled';
   items: MaterialRequestItem[];

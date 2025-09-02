@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -44,13 +43,18 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Plus, Trash2, Package, Check, ChevronsUpDown, MapPin } from "lucide-react";
-import { sites, materials, warehouseStock } from "../lib/mockData";
+import { sites } from "../lib/mockData";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+// (already imported above)
+import { db } from "../lib/firebase";
+import { collection, getDocs, addDoc } from "firebase/firestore";
+import { useEffect, useState, useContext } from "react";
+import { AuthContext } from "../contexts/AuthContext";
 
 const formSchema = z.object({
   siteName: z.string().min(1, "Please enter a site name"),
-  siteLocation: z.string().optional(),
+  siteId: z.string().optional(),
   priority: z.enum(["low", "medium", "high", "urgent"]),
   notes: z.string().optional(),
   items: z.array(z.object({
@@ -72,12 +76,39 @@ export function NewRequestForm({ open, onOpenChange }: NewRequestFormProps) {
   const [siteSearchOpen, setSiteSearchOpen] = useState(false);
   const [siteSearchValue, setSiteSearchValue] = useState("");
   const [selectedSite, setSelectedSite] = useState("");
+  const [allMaterials, setAllMaterials] = useState<any[]>([]);
+  const [selectedCategory, setSelectedCategory] = useState<string>("");
+  const [stockLevels, setStockLevels] = useState<any[]>([]);
+  const [allSites, setAllSites] = useState<string[]>([]);
+  const { user } = useContext(AuthContext) || {};
+
+  useEffect(() => {
+    async function fetchMaterialsAndStock() {
+      // Fetch all materials from Firestore solar_warehouse
+      const snapshot = await getDocs(collection(db, "solar_warehouse"));
+      const items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setAllMaterials(items);
+      setStockLevels(items);
+    }
+    fetchMaterialsAndStock();
+    async function fetchSitesFromRequests() {
+      try {
+        const snapshot = await getDocs(collection(db, "material_requests"));
+        // Get unique site names from requests
+        const siteNames = Array.from(new Set(snapshot.docs.map(doc => doc.data().siteName).filter(Boolean)));
+        setAllSites(siteNames);
+      } catch (err) {
+        console.error("Error fetching site names from material_requests:", err);
+      }
+    }
+    fetchSitesFromRequests();
+  }, []);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       siteName: "",
-      siteLocation: "",
+      siteId: "",
       priority: "medium",
       notes: "",
       items: [{ materialId: "", quantity: 1 }],
@@ -106,12 +137,12 @@ export function NewRequestForm({ open, onOpenChange }: NewRequestFormProps) {
   };
 
   const getAvailableStock = (materialId: string) => {
-    const stock = warehouseStock.find(s => s.materialId === materialId);
-    return stock ? stock.availableQuantity : 0;
+    const stock = stockLevels.find(s => s.id === materialId);
+    return stock ? stock.quantity : 0;
   };
 
   const getMaterialInfo = (materialId: string) => {
-    return materials.find(m => m.id === materialId);
+    return allMaterials.find(m => m.id === materialId);
   };
 
   const calculateTotalCost = () => {
@@ -121,66 +152,97 @@ export function NewRequestForm({ open, onOpenChange }: NewRequestFormProps) {
     }, 0);
   };
 
-  const onSubmit = (values: z.infer<typeof formSchema>) => {
-    // Check if site exists
-    const existingSite = sites.find(s => 
-      s.name.toLowerCase() === values.siteName.toLowerCase()
+  const onSubmit = async (values: z.infer<typeof formSchema>) => {
+    // Prevent submission if any requested quantity exceeds available stock
+    const exceedsStock = values.items.some(item => {
+      const available = getAvailableStock(item.materialId);
+      return item.quantity > available;
+    });
+    if (exceedsStock) {
+      toast({
+        title: "Stock Error",
+        description: "Requested quantity exceeds available stock for one or more items.",
+        variant: "destructive",
+      });
+      return;
+    }
+    // Check if site exists in allSites (from Firestore, all users)
+    const existingSite = allSites.find(s => 
+  s.toLowerCase() === values.siteName.toLowerCase()
     );
-    
     let siteInfo;
     if (existingSite) {
-      siteInfo = existingSite;
-      console.log("Appending request to existing site:", existingSite.name);
+      siteInfo = {
+        id: `site-${Date.now()}`,
+        name: existingSite,
+        location: "Location TBD",
+        contactPerson: "Contact TBD",
+        phone: "Phone TBD",
+        active: true
+      };
+      console.log("Appending request to existing site:", existingSite);
     } else {
       // Create new site
       siteInfo = {
         id: `site-${Date.now()}`,
         name: values.siteName,
-        location: values.siteLocation || "Location TBD",
+        location: values.siteId || "Location TBD",
         contactPerson: "Contact TBD",
         phone: "Phone TBD",
         active: true
       };
       console.log("Creating new site:", siteInfo);
     }
-    
     const newRequest = {
-      ...values,
-      siteId: siteInfo.id,
-      siteName: siteInfo.name
+  ...values,
+  siteId: siteInfo.id,
+  siteName: siteInfo.name,
+  createdAt: new Date().toISOString(),
+  requestedBy: user?.id || "",
+  requestedByUsername: user?.username || "",
+  companyId: user?.companyId || "",
+  requestDate: new Date().toISOString(),
     };
-    
-    console.log("New request:", newRequest);
-    
-    toast({
-      title: existingSite ? "Request Added to Existing Site" : "New Site & Request Created",
-      description: `Request for ${siteInfo.name} has been submitted successfully.`,
-    });
-    
-    // Reset form
-    form.reset();
-    setItems([{ materialId: "", quantity: 1 }]);
-    setSiteSearchValue("");
-    setSelectedSite("");
-    onOpenChange(false);
+    try {
+      await addDoc(collection(db, "material_requests"), newRequest);
+      toast({
+        title: existingSite ? "Request Added to Existing Site" : "New Site & Request Created",
+        description: `Request for ${siteInfo.name} has been submitted successfully and saved to Firestore.`,
+      });
+      // Reset form
+      form.reset();
+      setItems([{ materialId: "", quantity: 1 }]);
+      setSiteSearchValue("");
+      setSelectedSite("");
+      onOpenChange(false);
+    } catch (error) {
+      toast({
+        title: "Firestore Error",
+        description: `Failed to save request: ${error}`,
+        variant: "destructive",
+      });
+    }
   };
 
   const handleSiteSelect = (siteName: string, siteLocation?: string) => {
     setSiteSearchValue(siteName);
     setSelectedSite(siteName);
     setSiteSearchOpen(false);
-    
     // Update form values
     form.setValue("siteName", siteName);
     if (siteLocation) {
-      form.setValue("siteLocation", siteLocation);
+      form.setValue("siteId", siteLocation);
     }
   };
 
-  const filteredSites = sites.filter(site =>
-    site.name.toLowerCase().includes(siteSearchValue.toLowerCase()) ||
-    site.location.toLowerCase().includes(siteSearchValue.toLowerCase())
+  const filteredSites = allSites.filter(site =>
+    site.toLowerCase().includes(siteSearchValue.toLowerCase())
   );
+
+  // Filter materials by selected category and sort alphabetically
+  const filteredMaterials = allMaterials
+    .filter(m => selectedCategory ? m.category === selectedCategory : true)
+    .sort((a, b) => a.itemName.localeCompare(b.itemName));
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -230,9 +292,12 @@ export function NewRequestForm({ open, onOpenChange }: NewRequestFormProps) {
                               <CommandGroup heading="Existing Sites">
                                 {filteredSites.map((site) => (
                                   <CommandItem
-                                    key={site.id}
-                                    value={site.name}
-                                    onSelect={() => handleSiteSelect(site.name, site.location)}
+                                    key={site}
+                                    value={site}
+                                    onSelect={() => {
+                                      handleSiteSelect(site);
+                                      field.onChange(site);
+                                    }}
                                     className="cursor-pointer"
                                   >
                                     <div className="flex items-center justify-between w-full">
@@ -240,12 +305,11 @@ export function NewRequestForm({ open, onOpenChange }: NewRequestFormProps) {
                                         <Check
                                           className={cn(
                                             "mr-2 h-4 w-4",
-                                            selectedSite === site.name ? "opacity-100" : "opacity-0"
+                                            selectedSite === site ? "opacity-100" : "opacity-0"
                                           )}
                                         />
                                         <div>
-                                          <div className="font-medium">{site.name}</div>
-                                          <div className="text-sm text-muted-foreground">{site.location}</div>
+                                          <div className="font-medium">{site}</div>
                                         </div>
                                       </div>
                                       <MapPin className="h-4 w-4 text-muted-foreground" />
@@ -287,21 +351,21 @@ export function NewRequestForm({ open, onOpenChange }: NewRequestFormProps) {
                 )}
               />
 
-              {siteSearchValue && !sites.find(s => s.name.toLowerCase() === siteSearchValue.toLowerCase()) && (
+              {siteSearchValue && !allSites.find(s => s.toLowerCase() === siteSearchValue.toLowerCase()) && (
                 <FormField
                   control={form.control}
-                  name="siteLocation"
+                  name="siteId"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Site Location</FormLabel>
+                      <FormLabel>Site ID</FormLabel>
                       <FormControl>
                         <Input 
-                          placeholder="Enter location for new site..." 
+                          placeholder="Enter Site ID..." 
                           {...field} 
                         />
                       </FormControl>
                       <FormDescription>
-                        Location for the new site
+                        Unique identifier for the site
                       </FormDescription>
                       <FormMessage />
                     </FormItem>
@@ -364,6 +428,22 @@ export function NewRequestForm({ open, onOpenChange }: NewRequestFormProps) {
 
                   <div className="grid grid-cols-2 gap-3">
                     <div>
+                      <label className="text-sm font-medium">Category</label>
+                      <Select
+                        onValueChange={value => setSelectedCategory(value)}
+                        value={selectedCategory}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select category" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {[...new Set(allMaterials.map(m => String(m.category)))].sort().map((cat: string) => (
+                            <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
                       <label className="text-sm font-medium">Material</label>
                       <Select
                         onValueChange={(value) => updateItem(index, 'materialId', value)}
@@ -373,9 +453,9 @@ export function NewRequestForm({ open, onOpenChange }: NewRequestFormProps) {
                           <SelectValue placeholder="Select material" />
                         </SelectTrigger>
                         <SelectContent>
-                          {materials.map((material) => (
+                          {filteredMaterials.map((material) => (
                             <SelectItem key={material.id} value={material.id}>
-                              {material.name} - {material.unit}
+                              {material.itemName} - {material.unit}
                             </SelectItem>
                           ))}
                         </SelectContent>

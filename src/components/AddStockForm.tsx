@@ -1,14 +1,21 @@
-import { useState } from "react";
+import { useState, useContext } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { PlusCircle, PackagePlus } from "lucide-react";
 import { useToast } from "../hooks/use-toast";
 import { db } from "../lib/firebase";
 import { collection, addDoc, Timestamp } from "firebase/firestore";
+import { AuthContext } from "../contexts/AuthContext";
 
 const categories = [
 	"Safety Equipment",
@@ -20,6 +27,7 @@ const categories = [
 
 export const AddStockForm = ({ onStockAdded }) => {
 	const { toast } = useToast();
+	const { user } = useContext(AuthContext) || {};
 	const [newItem, setNewItem] = useState({
 		itemName: "",
 		itemCode: "",
@@ -58,6 +66,9 @@ export const AddStockForm = ({ onStockAdded }) => {
 			reorderLevel: parseInt(newItem.reorderLevel, 10) || 0,
 			unitPrice: parseFloat(newItem.unitPrice) || 0,
 			createdAt: Timestamp.now(),
+			receivingDate: new Date(),
+			receivedBy: user?.id || "",
+			companyId: user?.companyId || "",
 		};
 
 		try {

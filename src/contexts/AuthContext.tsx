@@ -9,9 +9,10 @@ import {
 } from "firebase/auth";
 import { doc, getDoc, setDoc, collection, query, where, getDocs, serverTimestamp, writeBatch } from "firebase/firestore";
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+// Export AuthContext so it can be imported elsewhere
+export const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export function AuthProvider({ children }: { ReactNode }) {
+export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true); // Set to true initially for auth state check
   const [companies, setCompanies] = useState<Company[]>([]);

@@ -1,6 +1,11 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+    // `sites` collection rules
+    match /sites/{siteId} {
+      allow read: if isAuthenticated();
+      allow write: if false;
+    }
 
     // --- Helper Functions ---
     function isAuthenticated() {
@@ -55,17 +60,18 @@ service cloud.firestore {
       return isAuthenticated() && getUserData().data.role == 'Warehouse';
     }
 
-    function isProjectManager() {
-      return isAuthenticated() && getUserData().data.role == 'Project Manager';
-    }
+    // Remove unused helper functions
+    // function isProjectManager() {
+    //   return isAuthenticated() && getUserData().data.role == 'Project Manager';
+    // }
         
-    function isPlanning() {
-      return isAuthenticated() && getUserData().data.role == 'Planning';
-    }
+    // function isPlanning() {
+    //   return isAuthenticated() && getUserData().data.role == 'Planning';
+    // }
 
-    function isSiteEngineer() {
-      return isAuthenticated() && getUserData().data.role == 'Site Engineer';
-    }
+    // function isSiteEngineer() {
+    //   return isAuthenticated() && getUserData().data.role == 'Site Engineer';
+    // }
         
     // --- Collection-Specific Rules ---
 
@@ -156,10 +162,16 @@ service cloud.firestore {
 
     // `materials` collection rules (from MaterialModal.tsx)
     match /materials/{materialId} {
-      allow read: if isAuthenticated() && isInCompany(resource.data.companyId);
+      allow read: if isAuthenticated();
       allow write: if isAuthenticated() &&
                            isInCompany(request.resource.data.companyId) &&
                            (isProcurement() || isAdmin() || isWarehouse());
+    }
+
+    // `solar_warehouse` collection rules
+    match /solar_warehouse/{docId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated();
     }
 
     // `suppliers` collection rules (from ProcurementDashboard.tsx)
@@ -225,6 +237,12 @@ service cloud.firestore {
       allow write: if isAuthenticated() &&
                            isInCompany(request.resource.data.companyId) &&
                            (isAdmin() || isLogistics());
+    }
+
+    // `material_requests` collection rules
+    match /material_requests/{requestId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated();
     }
   }
 }
