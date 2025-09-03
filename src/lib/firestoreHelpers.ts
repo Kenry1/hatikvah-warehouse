@@ -15,10 +15,7 @@ export interface MaterialRequest {
 
 export const getMaterialRequestList = async (companyId: string): Promise<MaterialRequest[]> => {
   try {
-    const q = query(
-      collection(db, 'material_requests'),
-      where('companyId', '==', companyId)
-    );
+    const q = query(collection(db, 'material_requests'));
     const querySnapshot = await getDocs(q);
     const requests: MaterialRequest[] = [];
     querySnapshot.forEach((doc) => {

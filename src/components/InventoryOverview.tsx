@@ -54,7 +54,7 @@ export const InventoryOverview = ({
     }
   };
 
-  const categories = [...new Set(data.map(item => item.category))];
+  const categories = [...new Set(data.map(item => item.category))].filter(category => typeof category === 'string' && category.trim() !== '');
 
   return (
     <Card>
@@ -126,7 +126,7 @@ export const InventoryOverview = ({
                 </TableRow>
               ) : (
                 filteredData.map((item) => (
-                  <TableRow key={item.itemCode}>
+                  <TableRow key={item.itemCode || `row-${item.itemName}-${item.category}-${item.unit}-${item.reorderLevel}` }>
                     <TableCell className="font-medium">{item.itemName}</TableCell>
                     <TableCell className="font-mono text-sm">{item.itemCode}</TableCell>
                     <TableCell>{item.category}</TableCell>
@@ -134,7 +134,7 @@ export const InventoryOverview = ({
                     <TableCell>{item.unit}</TableCell>
                     <TableCell className="text-right">{item.reorderLevel}</TableCell>
                     <TableCell>{getStockStatus(item)}</TableCell>
-                    <TableCell className="text-right">{item.unitPrice.toFixed(2)}</TableCell>
+                    <TableCell className="text-right">{typeof item.unitPrice === 'number' ? item.unitPrice.toFixed(2) : '-'}</TableCell>
                   </TableRow>
                 ))
               )}

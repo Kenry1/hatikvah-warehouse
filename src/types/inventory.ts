@@ -48,7 +48,7 @@ export interface MaterialRequest {
   requestedBy: string;
   requestedByUsername?: string;
   priority: 'low' | 'medium' | 'high' | 'urgent';
-  status: 'pending' | 'fulfilled' | 'partial' | 'cancelled';
+  status: 'pending' | 'fulfilled' | 'partial' | 'cancelled' | 'issued';
   items: MaterialRequestItem[];
   totalCost: number;
   notes?: string;
