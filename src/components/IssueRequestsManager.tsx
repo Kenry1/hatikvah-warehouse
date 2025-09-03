@@ -114,7 +114,8 @@ export const IssueRequestsManager = () => {
                       <TableCell>{request.priority ?? ''}</TableCell>
                       <TableCell>{request.requestDate ? new Date(request.requestDate).toLocaleDateString() : "N/A"}</TableCell>
                       <TableCell>{request.status ?? ''}</TableCell>
-                      <TableCell>{request.totalCost ? `$${request.totalCost.toFixed(2)}` : '-'}</TableCell>
+                      <TableCell>{request.totalCost ? `$${request.totalCost.toFixed(2)}` : '-'}
+                      </TableCell>
                       <TableCell>{request.notes ?? '-'}</TableCell>
                       <TableCell>
                         <Button
@@ -153,7 +154,7 @@ export const IssueRequestsManager = () => {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Request ID</TableHead>
-                    <TableHead>Requested By</TableHead>
+                    <TableHead>Requester</TableHead>
                     <TableHead>Priority</TableHead>
                     <TableHead>Request Date</TableHead>
                     <TableHead>Status</TableHead>
@@ -169,7 +170,8 @@ export const IssueRequestsManager = () => {
                       <TableCell>{request.priority}</TableCell>
                       <TableCell>{request.requestDate ? new Date(request.requestDate).toLocaleDateString() : "N/A"}</TableCell>
                       <TableCell>{request.status}</TableCell>
-                      <TableCell>{request.totalCost ? `$${request.totalCost.toFixed(2)}` : '-'}</TableCell>
+                      <TableCell>{request.totalCost ? `$${request.totalCost.toFixed(2)}` : '-'}
+                      </TableCell>
                       <TableCell>{request.notes ?? '-'}</TableCell>
                     </TableRow>
                   ))}
@@ -179,6 +181,6 @@ export const IssueRequestsManager = () => {
           )}
         </CardContent>
       </Card>
-  </div>
+    </div>
   );
 }
