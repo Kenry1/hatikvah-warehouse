@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
@@ -5,137 +6,148 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Search, Download, Filter, CheckCircle, XCircle, User, Calendar } from "lucide-react"
+import { saveAs } from "file-saver";
+import * as XLSX from "xlsx";
+import { getMaterialRequestList } from "@/lib/firestoreHelpers"
+import { useAuth } from "@/contexts/AuthContext"
+
+
 
 interface ApprovalRecord {
-  id: string
-  requestId: string
-  requestType: "fuel" | "material" | "finance"
-  title: string
-  requestor: string
-  amount: number
-  approver: string
-  approverRole: string
-  approvalDate: string
-  status: "approved" | "rejected"
-  comments?: string
+  id: string;
+  requestId: string;
+  requestType: "fuel" | "material" | "finance";
+  title: string;
+  requestor: string;
 }
 
-const approvalRecords: ApprovalRecord[] = [
-  {
-    id: "AR001",
-    requestId: "F003",
-    requestType: "fuel",
-    title: "Heavy Machinery Fuel",
-    requestor: "David Chen",
-    amount: 2100,
-    approver: "Sarah Mitchell",
-    approverRole: "Operations Manager",
-    approvalDate: "2024-01-13T10:30:00",
-    status: "approved",
-    comments: "Approved for urgent construction needs"
-  },
-  {
-    id: "AR002",
-    requestId: "M003",
-    requestType: "material",
-    title: "Electrical Wiring Kit",
-    requestor: "Lisa Park",
-    amount: 3200,
-    approver: "John Williams",
-    approverRole: "Project Manager",
-    approvalDate: "2024-01-12T14:15:00",
-    status: "approved",
-    comments: "Standard procurement approved"
-  },
-  {
-    id: "AR003",
-    requestId: "FN003",
-    requestType: "finance",
-    title: "Training Program Budget",
-    requestor: "Alex Johnson",
-    amount: 8200,
-    approver: "Emily Davis",
-    approverRole: "Finance Director",
-    approvalDate: "2024-01-13T09:45:00",
-    status: "rejected",
-    comments: "Budget constraints for Q1"
-  },
-  {
-    id: "AR004",
-    requestId: "F001",
-    requestType: "fuel",
-    title: "Generator Backup Fuel",
-    requestor: "Mark Thompson",
-    amount: 980,
-    approver: "Sarah Mitchell",
-    approverRole: "Operations Manager",
-    approvalDate: "2024-01-11T16:20:00",
-    status: "approved"
-  },
-  {
-    id: "AR005",
-    requestId: "M002",
-    requestType: "material",
-    title: "Construction Steel Rods",
-    requestor: "Carlos Rodriguez",
-    amount: 5400,
-    approver: "John Williams",
-    approverRole: "Project Manager",
-    approvalDate: "2024-01-10T11:30:00",
-    status: "approved",
-    comments: "Expedited for Phase 1 completion"
-  },
-  {
-    id: "AR006",
-    requestId: "FN002",
-    requestType: "finance",
-    title: "Software License Renewal",
-    requestor: "Jennifer Lee",
-    amount: 4800,
-    approver: "Emily Davis",
-    approverRole: "Finance Director",
-    approvalDate: "2024-01-09T13:10:00",
-    status: "rejected",
-    comments: "Alternative solution recommended"
-  }
-]
+const ApprovalRecordsTable = () => {
+  const { user } = useAuth();
+  const [records, setRecords] = useState<any[]>([]);
+  const [filteredRecords, setFilteredRecords] = useState<any[]>([]);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [requestType, setRequestType] = useState("all-types");
+  const [status, setStatus] = useState("all-status");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
 
-const getRequestTypeColor = (type: string) => {
-  switch (type) {
-    case "fuel":
-      return "bg-orange-100 text-orange-800"
-    case "material":
-      return "bg-blue-100 text-blue-800"
-    case "finance":
-      return "bg-green-100 text-green-800"
-    default:
-      return "bg-muted text-muted-foreground"
-  }
-}
+  useEffect(() => {
+    if (!user?.companyId) return;
+    getMaterialRequestList(user.companyId).then((data) => {
+      // Only show approved/rejected requests
+      const filtered = data.filter((r) => r.status === "approved" || r.status === "rejected");
+      setRecords(filtered);
+    });
+  }, [user]);
 
-const getStatusColor = (status: string) => {
-  switch (status) {
-    case "approved":
-      return "bg-success text-success-foreground"
-    case "rejected":
-      return "bg-destructive text-destructive-foreground"
-    default:
-      return "bg-muted text-muted-foreground"
-  }
-}
+  useEffect(() => {
+    let temp = [...records];
+    if (requestType !== "all-types") {
+      temp = temp.filter(r => r.requestType === requestType);
+    }
+    if (status !== "all-status") {
+      temp = temp.filter(r => r.status === status);
+    }
+    if (searchTerm.trim()) {
+      const term = searchTerm.trim().toLowerCase();
+      temp = temp.filter(r =>
+        (r.requestedByUsername?.toLowerCase().includes(term) || "") ||
+        (r.approver?.toLowerCase().includes(term) || "") ||
+        (r.title?.toLowerCase().includes(term) || "")
+      );
+    }
+    if (dateFrom) {
+      const from = new Date(dateFrom).getTime();
+      temp = temp.filter(r => {
+        const reqDate = r.requestDate ? new Date(r.requestDate).getTime() : 0;
+        return reqDate >= from;
+      });
+    }
+    if (dateTo) {
+      const to = new Date(dateTo).getTime();
+      temp = temp.filter(r => {
+        const reqDate = r.requestDate ? new Date(r.requestDate).getTime() : 0;
+        return reqDate <= to;
+      });
+    }
+    setFilteredRecords(temp);
+  }, [records, requestType, status, searchTerm, dateFrom, dateTo]);
 
-const getStatusIcon = (status: string) => {
-  switch (status) {
-    case "approved":
-      return <CheckCircle className="h-4 w-4" />
-    case "rejected":
-      return <XCircle className="h-4 w-4" />
-    default:
-      return null
-  }
-}
+  const getRequestTypeColor = (type: string) => {
+    switch (type) {
+      case "fuel":
+        return "bg-orange-100 text-orange-800";
+      case "material":
+        return "bg-blue-100 text-blue-800";
+      case "finance":
+        return "bg-green-100 text-green-800";
+      default:
+        return "bg-muted text-muted-foreground";
+    }
+  };
 
-export function ApprovalRecordsTable() {
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case "approved":
+        return "bg-success text-success-foreground";
+      case "rejected":
+        return "bg-destructive text-destructive-foreground";
+      default:
+        return "bg-muted text-muted-foreground";
+    }
+  };
+
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case "approved":
+        return <CheckCircle className="h-4 w-4" />;
+      case "rejected":
+        return <XCircle className="h-4 w-4" />;
+      default:
+        return null;
+    }
+  };
+
+  // Download handlers
+  const handleDownloadXLS = () => {
+    const data = filteredRecords.map(r => ({
+      ID: r.id,
+      Type: r.requestType,
+      Title: r.materialType || r.description || r.title,
+      Requestor: r.username || r.requestedByUsername || "",
+      Amount: r.price ?? "",
+      Approver: r.approver || "",
+      Role: r.approverRole || "",
+      Date: r.requestDate ? new Date(r.requestDate).toLocaleDateString() : "",
+      Status: r.status,
+      Comments: r.comments || ""
+    }));
+    const worksheet = XLSX.utils.json_to_sheet(data);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "ApprovalRecords");
+    const xlsData = XLSX.write(workbook, { bookType: "xlsx", type: "array" });
+    const blob = new Blob([xlsData], { type: "application/octet-stream" });
+    saveAs(blob, "approval_records.xlsx");
+  };
+
+  const handleDownloadPDF = async () => {
+    const jsPDFModule = await import("jspdf");
+    const doc = new jsPDFModule.default();
+    let y = 10;
+    doc.setFontSize(12);
+    doc.text("Approval Records", 10, y);
+    y += 10;
+    filteredRecords.forEach((r, idx) => {
+      doc.text(`ID: ${r.id} | Type: ${r.requestType} | Title: ${r.materialType || r.description || r.title} | Requestor: ${r.username || r.requestedByUsername || ""} | Amount: ${r.price ?? ""} | Approver: ${r.approver || ""} | Role: ${r.approverRole || ""} | Date: ${r.requestDate ? new Date(r.requestDate).toLocaleDateString() : ""} | Status: ${r.status} | Comments: ${r.comments || ""}`, 10, y);
+      y += 8;
+      if (y > 280) {
+        doc.addPage();
+        y = 10;
+      }
+    });
+    doc.save("approval_records.pdf");
+  };
+
   return (
     <Card className="bg-gradient-card border shadow-sm">
       <CardHeader>
@@ -153,9 +165,17 @@ export function ApprovalRecordsTable() {
             <Input
               placeholder="Search by requestor, approver, or title..."
               className="pl-10"
+              value={searchTerm}
+              onChange={e => setSearchTerm(e.target.value)}
             />
           </div>
-          <Select defaultValue="all-types">
+          <div className="flex gap-2 items-center">
+            <label className="text-xs text-muted-foreground">From</label>
+            <Input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} className="w-32" />
+            <label className="text-xs text-muted-foreground">To</label>
+            <Input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} className="w-32" />
+          </div>
+          <Select value={requestType} onValueChange={setRequestType}>
             <SelectTrigger className="w-full sm:w-48">
               <SelectValue />
             </SelectTrigger>
@@ -166,7 +186,7 @@ export function ApprovalRecordsTable() {
               <SelectItem value="finance">Finance Requests</SelectItem>
             </SelectContent>
           </Select>
-          <Select defaultValue="all-status">
+          <Select value={status} onValueChange={setStatus}>
             <SelectTrigger className="w-full sm:w-40">
               <SelectValue />
             </SelectTrigger>
@@ -179,8 +199,13 @@ export function ApprovalRecordsTable() {
           <Button variant="outline" size="icon">
             <Filter className="h-4 w-4" />
           </Button>
-          <Button variant="outline" size="icon">
+          <Button variant="outline" size="sm" onClick={handleDownloadXLS} title="Download XLS" className="flex items-center gap-2">
             <Download className="h-4 w-4" />
+            <span className="text-xs">.xls</span>
+          </Button>
+          <Button variant="outline" size="sm" onClick={handleDownloadPDF} title="Download PDF" className="flex items-center gap-2">
+            <Download className="h-4 w-4" />
+            <span className="text-xs">.pdf</span>
           </Button>
         </div>
       </CardHeader>
@@ -202,40 +227,38 @@ export function ApprovalRecordsTable() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {approvalRecords.map((record) => (
+              {filteredRecords.map((record) => (
                 <TableRow key={record.id}>
-                  <TableCell className="font-medium">{record.requestId}</TableCell>
+                  <TableCell className="font-medium">{record.id}</TableCell>
                   <TableCell>
-                    <Badge className={getRequestTypeColor(record.requestType)}>
-                      {record.requestType}
-                    </Badge>
+                    <Badge className={getRequestTypeColor("material")}>material</Badge>
                   </TableCell>
-                  <TableCell className="max-w-xs truncate" title={record.title}>
-                    {record.title}
+                  <TableCell className="max-w-xs truncate" title={record.materialType || record.description}>
+                    {record.materialType || record.description}
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-2">
                       <User className="h-3 w-3 text-muted-foreground" />
-                      {record.requestor}
+                      {record.username || record.requestedByUsername || ""}
                     </div>
                   </TableCell>
                   <TableCell className="font-medium">
-                    ${record.amount.toLocaleString()}
+                    ${Number(record.price ?? 0).toLocaleString()}
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-2">
                       <User className="h-3 w-3 text-muted-foreground" />
-                      {record.approver}
+                      {record.approver || "—"}
                     </div>
                   </TableCell>
                   <TableCell className="text-sm text-muted-foreground">
-                    {record.approverRole}
+                    {record.approverRole || "—"}
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-2">
                       <Calendar className="h-3 w-3 text-muted-foreground" />
                       <span className="text-sm">
-                        {new Date(record.approvalDate).toLocaleDateString()}
+                        {record.requestDate ? new Date(record.requestDate).toLocaleDateString() : "—"}
                       </span>
                     </div>
                   </TableCell>
@@ -257,5 +280,7 @@ export function ApprovalRecordsTable() {
         </div>
       </CardContent>
     </Card>
-  )
-}
+  );
+};
+
+export default ApprovalRecordsTable;

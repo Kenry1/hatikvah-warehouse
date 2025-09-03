@@ -1,3 +1,35 @@
+// Material Request type and fetch function
+export interface MaterialRequest {
+  id?: string;
+  requesterId: string;
+  companyId: string;
+  materialType: string;
+  description: string;
+  status: 'pending' | 'approved' | 'rejected' | 'assigned';
+  requestedDate?: any;
+  assignedTo?: string;
+  comments?: string;
+  price?: number;
+  urgency?: 'high' | 'medium' | 'low';
+}
+
+export const getMaterialRequestList = async (companyId: string): Promise<MaterialRequest[]> => {
+  try {
+    const q = query(
+      collection(db, 'material_requests'),
+      where('companyId', '==', companyId)
+    );
+    const querySnapshot = await getDocs(q);
+    const requests: MaterialRequest[] = [];
+    querySnapshot.forEach((doc) => {
+      requests.push({ id: doc.id, ...doc.data() } as MaterialRequest);
+    });
+    return requests;
+  } catch (error) {
+    console.error('Error fetching material requests: ', error);
+    throw new Error('Failed to fetch material requests.');
+  }
+};
 import { db } from './firebase';
 import { collection, addDoc, getDocs, query, where, serverTimestamp, doc, deleteDoc, updateDoc } from 'firebase/firestore';
 import { Toast } from '@/components/ui/toast';

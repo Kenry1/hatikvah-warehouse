@@ -194,20 +194,37 @@ export function NewRequestForm({ open, onOpenChange }: NewRequestFormProps) {
       console.log("Creating new site:", siteInfo);
     }
     const newRequest = {
-  ...values,
-  siteId: siteInfo.id,
-  siteName: siteInfo.name,
-  createdAt: new Date().toISOString(),
-  requestedBy: user?.id || "",
-  requestedByUsername: user?.username || "",
-  companyId: user?.companyId || "",
-  requestDate: new Date().toISOString(),
+      ...values,
+      siteId: siteInfo.id,
+      siteName: siteInfo.name,
+      createdAt: new Date().toISOString(),
+      requestedBy: user?.id || "",
+      requestedByUsername: user?.username || "",
+      requestorRole: user?.role || "",
+      approver: "", // to be filled when approved
+      approverRole: "", // to be filled when approved
+      companyId: user?.companyId || "",
+      requestDate: new Date().toISOString(),
     };
     try {
       await addDoc(collection(db, "material_requests"), newRequest);
+      // Deduct requested quantities from solar_warehouse inventory using Firestore transactions
+      const { runTransaction, doc: docRef } = await import("firebase/firestore");
+      await runTransaction(db, async (transaction) => {
+        for (const item of values.items) {
+          const materialDocRef = docRef(db, "solar_warehouse", item.materialId);
+          const materialDocSnap = await transaction.get(materialDocRef);
+          if (!materialDocSnap.exists()) {
+            throw new Error(`Material with ID ${item.materialId} does not exist.`);
+          }
+          const currentQty = materialDocSnap.data().quantity ?? materialDocSnap.data().availableQuantity ?? 0;
+          const newQty = Math.max(currentQty - item.quantity, 0);
+          transaction.update(materialDocRef, { quantity: newQty, availableQuantity: newQty });
+        }
+      });
       toast({
         title: existingSite ? "Request Added to Existing Site" : "New Site & Request Created",
-        description: `Request for ${siteInfo.name} has been submitted successfully and saved to Firestore.`,
+        description: `Request for ${siteInfo.name} has been submitted successfully and saved to Firestore. Inventory updated atomically.`,
       });
       // Reset form
       form.reset();

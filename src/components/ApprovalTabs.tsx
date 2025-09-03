@@ -1,189 +1,64 @@
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { 
-  Fuel, 
-  Package, 
-  CreditCard, 
-  CheckCircle, 
-  XCircle, 
-  Clock,
-  User,
-  Calendar,
-  DollarSign
-} from "lucide-react"
-import { ApprovalRecordsTable } from "./ApprovalRecordsTable"
-
-interface RequestItem {
-  id: string
-  title: string
-  requestor: string
-  amount: number
-  date: string
-  urgency: "high" | "medium" | "low"
-  status: "pending" | "approved" | "rejected"
-  description: string
-}
-
-const fuelRequests: RequestItem[] = [
-  {
-    id: "F001",
-    title: "Diesel for Generator Backup",
-    requestor: "John Smith",
-    amount: 1250,
-    date: "2024-01-15",
-    urgency: "high",
-    status: "pending",
-    description: "Emergency fuel for backup generator during maintenance"
-  },
-  {
-    id: "F002", 
-    title: "Vehicle Fleet Refueling",
-    requestor: "Maria Garcia",
-    amount: 850,
-    date: "2024-01-14",
-    urgency: "medium",
-    status: "pending",
-    description: "Monthly fuel allowance for company vehicles"
-  },
-  {
-    id: "F003",
-    title: "Heavy Machinery Fuel",
-    requestor: "David Chen",
-    amount: 2100,
-    date: "2024-01-13",
-    urgency: "high",
-    status: "approved",
-    description: "Fuel for construction equipment at Site A"
-  }
-]
-
-const materialRequests: RequestItem[] = [
-  {
-    id: "M001",
-    title: "Steel Beams - Grade A36",
-    requestor: "Sarah Wilson",
-    amount: 15750,
-    date: "2024-01-15",
-    urgency: "high",
-    status: "pending",
-    description: "Structural steel for Building Phase 2"
-  },
-  {
-    id: "M002",
-    title: "Concrete Mix - 50 Bags",
-    requestor: "Tom Rodriguez",
-    amount: 890,
-    date: "2024-01-14",
-    urgency: "medium",
-    status: "pending",
-    description: "Foundation concrete for parking area"
-  },
-  {
-    id: "M003",
-    title: "Electrical Wiring Kit",
-    requestor: "Lisa Park",
-    amount: 3200,
-    date: "2024-01-12",
-    urgency: "low",
-    status: "approved",
-    description: "Wiring materials for office renovation"
-  }
-]
-
-const financeRequests: RequestItem[] = [
-  {
-    id: "FN001",
-    title: "Consultant Fee - Q1 2024",
-    requestor: "Michael Brown",
-    amount: 12500,
-    date: "2024-01-15",
-    urgency: "medium",
-    status: "pending",
-    description: "Quarterly payment for technical consultant"
-  },
-  {
-    id: "FN002",
-    title: "Software License Renewal",
-    requestor: "Jennifer Lee",
-    amount: 4800,
-    date: "2024-01-14",
-    urgency: "high",
-    status: "pending",
-    description: "Annual renewal for project management software"
-  },
-  {
-    id: "FN003",
-    title: "Training Program Budget",
-    requestor: "Alex Johnson",
-    amount: 8200,
-    date: "2024-01-13",
-    urgency: "low",
-    status: "rejected",
-    description: "Staff training and development program"
-  }
-]
-
-const getUrgencyColor = (urgency: string) => {
+// Helper functions for status/urgency (must be at the top for all components)
+function getUrgencyColor(urgency: string) {
   switch (urgency) {
     case "high":
-      return "bg-destructive text-destructive-foreground"
-    case "medium": 
-      return "bg-warning text-warning-foreground"
+      return "bg-destructive text-destructive-foreground";
+    case "medium":
+      return "bg-warning text-warning-foreground";
     case "low":
-      return "bg-success text-success-foreground"
+      return "bg-success text-success-foreground";
     default:
-      return "bg-muted text-muted-foreground"
+      return "bg-muted text-muted-foreground";
   }
 }
 
-const getStatusColor = (status: string) => {
+function getStatusColor(status: string) {
   switch (status) {
     case "approved":
-      return "bg-success text-success-foreground"
+      return "bg-success text-success-foreground";
     case "rejected":
-      return "bg-destructive text-destructive-foreground"
+      return "bg-destructive text-destructive-foreground";
     case "pending":
-      return "bg-warning text-warning-foreground"
+      return "bg-warning text-warning-foreground";
     default:
-      return "bg-muted text-muted-foreground"
+      return "bg-muted text-muted-foreground";
   }
 }
 
-const getStatusIcon = (status: string) => {
+function getStatusIcon(status: string) {
   switch (status) {
     case "approved":
-      return <CheckCircle className="h-4 w-4" />
+      return <CheckCircle className="h-4 w-4" />;
     case "rejected":
-      return <XCircle className="h-4 w-4" />
+      return <XCircle className="h-4 w-4" />;
     case "pending":
-      return <Clock className="h-4 w-4" />
+      return <Clock className="h-4 w-4" />;
     default:
-      return <Clock className="h-4 w-4" />
+      return <Clock className="h-4 w-4" />;
   }
 }
-
-const RequestCard = ({ request }: { request: RequestItem }) => (
+// ...existing code...
+// Restore generic RequestCard for non-material requests
+const RequestCard = ({ request }: { request: any }) => (
   <Card className="bg-gradient-card border shadow-sm hover:shadow-md transition-all px-2 py-2 sm:px-4 sm:py-4">
     <CardHeader className="pb-3">
       <div className="flex flex-col sm:flex-row items-start justify-between gap-2">
         <div className="flex-1">
           <CardTitle className="text-base sm:text-lg font-semibold text-foreground mb-2">
-            {request.title}
+            {request.title || request.assetType || "Request"}
           </CardTitle>
           <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-xs sm:text-sm text-muted-foreground">
             <div className="flex items-center gap-1">
               <User className="h-3 w-3" />
-              {request.requestor}
+              {request.requestor || request.requesterId || "Unknown"}
             </div>
             <div className="flex items-center gap-1">
               <Calendar className="h-3 w-3" />
-              {new Date(request.date).toLocaleDateString()}
+              {request.requestedDate?.toDate?.() ? new Date(request.requestedDate.toDate()).toLocaleDateString() : "N/A"}
             </div>
             <div className="flex items-center gap-1">
               <DollarSign className="h-3 w-3" />
-              ${request.amount.toLocaleString()}
+              ${Number(request.price ?? request.amount ?? 0).toLocaleString()}
             </div>
           </div>
         </div>
@@ -192,14 +67,14 @@ const RequestCard = ({ request }: { request: RequestItem }) => (
             {getStatusIcon(request.status)}
             <span className="ml-1 capitalize">{request.status}</span>
           </Badge>
-          <Badge className={getUrgencyColor(request.urgency)}>
-            {request.urgency} priority
+          <Badge className={getUrgencyColor(request.urgency || "medium")}> {/* Default to medium if missing */}
+            {(request.urgency || "medium")} priority
           </Badge>
         </div>
       </div>
     </CardHeader>
     <CardContent>
-      <p className="text-xs sm:text-sm text-muted-foreground mb-4">{request.description}</p>
+      <p className="text-xs sm:text-sm text-muted-foreground mb-4">{request.description || request.comments || "No description"}</p>
       {request.status === "pending" && (
         <div className="flex flex-col sm:flex-row gap-2">
           <Button size="sm" className="flex-1">
@@ -215,8 +90,236 @@ const RequestCard = ({ request }: { request: RequestItem }) => (
     </CardContent>
   </Card>
 )
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { 
+  Fuel, 
+  Package, 
+  CreditCard, 
+  CheckCircle, 
+  XCircle, 
+  Clock,
+  User,
+  Calendar,
+  DollarSign
+} from "lucide-react"
+import ApprovalRecordsTable from "./ApprovalRecordsTable"
+import { useEffect, useState } from "react"
+import { useToast } from "@/hooks/use-toast"
+import { getAssetRequestList, getMaterialRequestList } from "@/lib/firestoreHelpers"
+import { doc, updateDoc } from "firebase/firestore"
+import { getDocs, collection } from "firebase/firestore"
+import { db } from "@/lib/firebase"
+import { useAuth } from "@/contexts/AuthContext"
+
+interface RequestItem {
+  id: string
+  title: string
+  requestor: string
+  amount: number
+  date: string
+  urgency: "high" | "medium" | "low"
+  status: "pending" | "approved" | "rejected"
+  description: string
+}
+
 
 export function ApprovalTabs() {
+  // Lookup for materialId to itemName
+  const [allMaterials, setAllMaterials] = useState<any[]>([]);
+
+  useEffect(() => {
+    async function fetchMaterials() {
+      const snapshot = await getDocs(collection(db, "solar_warehouse"));
+      const items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setAllMaterials(items);
+    }
+    fetchMaterials();
+  }, []);
+  const { user } = useAuth();
+  const [requests, setRequests] = useState<any[]>([]);
+  const [materialRequests, setMaterialRequests] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (!user?.companyId) return;
+    getAssetRequestList(user.companyId).then(setRequests);
+    getMaterialRequestList(user.companyId).then(setMaterialRequests);
+  }, [user]);
+
+  // Categorize requests by assetType
+  const fuelRequests = requests.filter(r => r.assetType?.toLowerCase().includes("fuel"));
+  const financeRequests = requests.filter(r => r.assetType?.toLowerCase().includes("finance"));
+
+// Helper functions for status/urgency
+function getUrgencyColor(urgency: string) {
+  switch (urgency) {
+    case "high":
+      return "bg-destructive text-destructive-foreground";
+    case "medium":
+      return "bg-warning text-warning-foreground";
+    case "low":
+      return "bg-success text-success-foreground";
+    default:
+      return "bg-muted text-muted-foreground";
+  }
+}
+
+function getStatusColor(status: string) {
+  switch (status) {
+    case "approved":
+      return "bg-success text-success-foreground";
+    case "rejected":
+      return "bg-destructive text-destructive-foreground";
+    case "pending":
+      return "bg-warning text-warning-foreground";
+    default:
+      return "bg-muted text-muted-foreground";
+  }
+}
+
+function getStatusIcon(status: string) {
+  switch (status) {
+    case "approved":
+      return <CheckCircle className="h-4 w-4" />;
+    case "rejected":
+      return <XCircle className="h-4 w-4" />;
+    case "pending":
+      return <Clock className="h-4 w-4" />;
+    default:
+      return <Clock className="h-4 w-4" />;
+  }
+}
+
+
+
+
+const MaterialRequestCard = ({ request, onApprove }: { request: any, onApprove: (id: string) => void }) => {
+  const [showItems, setShowItems] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const { toast } = useToast();
+  const handleDiscard = async () => {
+    setLoading(true);
+    try {
+      // Restore inventory using Firestore transaction
+      const { runTransaction, doc: docRef, deleteDoc } = await import("firebase/firestore");
+      await runTransaction(db, async (transaction) => {
+        for (const item of request.items) {
+          const materialDocRef = docRef(db, "solar_warehouse", item.materialId);
+          const materialDocSnap = await transaction.get(materialDocRef);
+          if (!materialDocSnap.exists()) continue;
+          const currentQty = materialDocSnap.data().quantity ?? materialDocSnap.data().availableQuantity ?? 0;
+          const newQty = currentQty + item.quantity;
+          transaction.update(materialDocRef, { quantity: newQty, availableQuantity: newQty });
+        }
+        // Mark the request as rejected instead of deleting
+        transaction.update(docRef(db, "material_requests", request.id), { status: "rejected" });
+      });
+  toast({ title: "Request Discarded", description: "Request marked as rejected and inventory restored." });
+  if (typeof request.onDiscard === "function") request.onDiscard(request.id);
+    } catch (error) {
+      toast({ title: "Error", description: `Failed to discard request: ${error}` });
+    }
+    setLoading(false);
+  };
+  // Helper to get item name from materialId
+  const getMaterialName = (materialId: string) => {
+    const material = allMaterials.find(m => m.id === materialId);
+    return material ? material.itemName : "Unknown";
+  };
+
+  return (
+    <Card className="bg-gradient-card border shadow-sm hover:shadow-md transition-all px-2 py-2 sm:px-4 sm:py-4">
+      <CardHeader className="pb-3">
+        <div className="flex flex-col sm:flex-row items-start justify-between gap-2">
+          <div className="flex-1">
+            <CardTitle className="text-base sm:text-lg font-semibold text-foreground mb-2">
+              Material Request
+            </CardTitle>
+            <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-xs sm:text-sm text-muted-foreground">
+              <div className="flex items-center gap-1">
+                <User className="h-3 w-3" />
+                {request.requestedByUsername || "Unknown"}
+              </div>
+              <div className="flex items-center gap-1">
+                <span className="font-semibold">Site:</span>
+                {request.siteName || "N/A"}
+              </div>
+              <div className="flex items-center gap-1">
+                <span className="font-semibold">Requester:</span>
+                {request.requestedByUsername || "N/A"}
+              </div>
+              <div className="flex items-center gap-1">
+                <Calendar className="h-3 w-3" />
+                {request.requestDate ? new Date(request.requestDate).toLocaleDateString() : "N/A"}
+              </div>
+            </div>
+          </div>
+          <div className="flex flex-row sm:flex-col items-end gap-2">
+            <Badge className={getStatusColor(request.status)}>
+              {getStatusIcon(request.status)}
+              <span className="ml-1 capitalize">{request.status}</span>
+            </Badge>
+            <Badge className={getUrgencyColor(request.priority || "medium")}> {/* Default to medium if missing */}
+              {(request.priority || "medium")} priority
+            </Badge>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent>
+        <div className="flex flex-col gap-2">
+          <div className="flex flex-row gap-2 w-full">
+            <Button
+              size="sm"
+              className="flex-1 min-w-0"
+              disabled={request.status === "approved"}
+              onClick={() => onApprove(request.id)}
+            >
+              <CheckCircle className="h-4 w-4 mr-2" />
+              {request.status === "approved" ? "Approved" : "Approve"}
+            </Button>
+            <Button size="sm" variant="outline" className="flex-1 min-w-0" onClick={() => setShowItems((v) => !v)}>
+              {showItems ? "Hide" : "View"}
+            </Button>
+            <Button size="sm" variant="destructive" className="flex-1 min-w-0" onClick={handleDiscard} disabled={loading || request.status === "approved"}>
+              <XCircle className="h-4 w-4 mr-2" />
+              {loading ? "Discarding..." : "Discard"}
+            </Button>
+          </div>
+          {showItems && Array.isArray(request.items) && (
+            <div className="mt-2 border rounded bg-muted p-2">
+              <div className="font-semibold mb-2">Requested Items:</div>
+              <ul className="list-disc pl-4">
+                {request.items.map((item: any, idx: number) => (
+                  <li key={idx} className="mb-2">
+                    <div><span className="font-semibold">Name:</span> {getMaterialName(item.materialId)}</div>
+                    <div><span className="font-semibold">Quantity:</span> {item.quantity} {item.unit}</div>
+                    {item.notes && <div><span className="font-semibold">Notes:</span> {item.notes}</div>}
+                    <div><span className="font-semibold">Priority:</span> {item.priority}</div>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+        {request.status === "pending" && (
+          <div className="flex flex-row gap-2 mt-2 w-full">
+            <Button size="sm" className="flex-1 min-w-0" onClick={() => onApprove(request.id)}>
+              <CheckCircle className="h-4 w-4 mr-2" />
+              Approve
+            </Button>
+            <Button size="sm" variant="destructive" className="flex-1 min-w-0" onClick={handleDiscard} disabled={loading}>
+              <XCircle className="h-4 w-4 mr-2" />
+              {loading ? "Discarding..." : "Discard"}
+            </Button>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+};
+
   return (
     <div className="space-y-6">
       <Tabs defaultValue="fuel" className="w-full">
@@ -250,7 +353,19 @@ export function ApprovalTabs() {
         <TabsContent value="material" className="mt-6">
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
             {materialRequests.map((request) => (
-              <RequestCard key={request.id} request={request} />
+              <MaterialRequestCard
+                key={request.id}
+                request={{
+                  ...request,
+                  onDiscard: (id: string) => {
+                    setMaterialRequests((prev) => prev.filter(r => r.id !== id));
+                  },
+                }}
+                onApprove={async (id) => {
+                  await updateDoc(doc(db, "material_requests", id), { status: "approved" });
+                  setMaterialRequests((prev) => prev.map(r => r.id === id ? { ...r, status: "approved" } : r));
+                }}
+              />
             ))}
           </div>
         </TabsContent>
