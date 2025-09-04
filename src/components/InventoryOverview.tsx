@@ -158,7 +158,7 @@ export const InventoryOverview = ({
                           />
                           <button
                             type="button"
-                            className="bg-primary text-white px-2 py-1 rounded"
+                            className="bg-primary text-black dark:text-black px-2 py-1 rounded"
                             onClick={handleRestock}
                           >
                             Add
