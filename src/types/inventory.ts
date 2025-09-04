@@ -48,13 +48,17 @@ export interface MaterialRequest {
   requestedBy: string;
   requestedByUsername?: string;
   priority: 'low' | 'medium' | 'high' | 'urgent';
-  status: 'pending' | 'fulfilled' | 'partial' | 'cancelled' | 'issued';
+  status: 'submitted' | 'approved' | 'issued' | 'pending' | 'fulfilled' | 'partial' | 'cancelled' | 'other';
   items: MaterialRequestItem[];
   totalCost: number;
   notes?: string;
   approvedBy?: string;
   approvedDate?: Date;
   fulfilledDate?: Date;
+  requestorRole?: string;
+  approver?: string;
+  approverRole?: string;
+  issuedBy?: string;
 }
 
 export type FulfillmentStatus = 'pending' | 'fulfilled' | 'partial';

@@ -52,27 +52,22 @@ export function RequestsTable({ requests, onViewDetails, companyId, variant = 'd
 
   const getStatusBadge = (status: string | undefined) => {
     if (!status) return <Badge className="bg-muted text-muted-foreground">Unknown</Badge>;
-    const variants: Record<string, 'default' | 'secondary' | 'destructive'> = {
-      submitted: 'default',
-      approved: 'secondary',
-      issued: 'destructive',
-      fulfilled: 'default',
-      partial: 'secondary',
-      pending: 'destructive',
-      cancelled: 'destructive'
-    };
     const colors: Record<string, string> = {
-      submitted: 'bg-primary text-primary-foreground',
-      approved: 'bg-success text-success-foreground',
-      issued: 'bg-warning text-warning-foreground',
+      submitted: 'bg-blue-500 text-white',
+      approved: 'bg-green-500 text-white',
+      issued: 'bg-yellow-500 text-black',
       fulfilled: 'bg-success text-success-foreground',
       partial: 'bg-warning text-warning-foreground',
       pending: 'bg-danger text-danger-foreground',
       cancelled: 'bg-muted text-muted-foreground'
     };
+    let label = status.charAt(0).toUpperCase() + status.slice(1);
+    if (status === 'submitted') label = 'Submitted';
+    if (status === 'approved') label = 'Approved';
+    if (status === 'issued') label = 'Issued';
     return (
       <Badge className={colors[status] || 'bg-muted text-muted-foreground'}>
-        {status.charAt(0).toUpperCase() + status.slice(1)}
+        {label}
       </Badge>
     );
   };
@@ -150,7 +145,7 @@ export function RequestsTable({ requests, onViewDetails, companyId, variant = 'd
                 <TableRow key={request.id} className="hover:bg-muted/50">
                   <TableCell className="font-medium">{request.id}</TableCell>
                   <TableCell>{request.siteName}</TableCell>
-                  <TableCell>{request.requestedByUsername || getUserName(request.requestedBy)}</TableCell>
+                  <TableCell>{request.status === 'pending' ? request.requestedByUsername : (request.requestedByUsername || getUserName(request.requestedBy) || request.requestedBy)}</TableCell>
                   <TableCell>
                     <div className="flex items-center gap-1">
                       <Calendar className="h-3 w-3 text-muted-foreground" />
@@ -167,13 +162,20 @@ export function RequestsTable({ requests, onViewDetails, companyId, variant = 'd
                   <TableCell>{getStatusBadge(request.status)}</TableCell>
                   <TableCell>KSh {(request.totalCost ?? 0).toLocaleString()}</TableCell>
                   <TableCell>{request.items.length} items</TableCell>
-                  <TableCell className="text-right">
+                  <TableCell className="text-right flex gap-2 justify-end">
                     <Button
                       variant="ghost"
                       size="sm"
                       onClick={() => onViewDetails(request)}
                     >
                       <Eye className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {/* TODO: handle dispatch logic */}}
+                    >
+                      Dispatch
                     </Button>
                   </TableCell>
                 </TableRow>

@@ -23,14 +23,15 @@ export const InventoryOverview = ({
   setCategoryFilter 
 }: InventoryOverviewProps) => {
   const [statusFilter, setStatusFilter] = useState("all");
+  const [restockQty, setRestockQty] = useState<Record<string, string>>({});
 
   // Filter data based on search and filters
   const filteredData = data.filter(item => {
-    const matchesSearch = item.itemName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         item.itemCode.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSearch = (typeof item.itemName === 'string' && item.itemName.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (typeof item.itemCode === 'string' && item.itemCode.toLowerCase().includes(searchTerm.toLowerCase()));
     
     const matchesCategory = categoryFilter === "all" || 
-                           item.category.toLowerCase() === categoryFilter.toLowerCase();
+      (typeof item.category === 'string' && item.category.toLowerCase() === categoryFilter.toLowerCase());
     
     let matchesStatus = true;
     if (statusFilter === "low stock") {
@@ -57,7 +58,7 @@ export const InventoryOverview = ({
   const categories = [...new Set(data.map(item => item.category))].filter(category => typeof category === 'string' && category.trim() !== '');
 
   return (
-    <Card>
+  <Card>
       <CardHeader>
         <CardTitle className="flex items-center space-x-2">
           <Package className="h-5 w-5" />
@@ -115,6 +116,7 @@ export const InventoryOverview = ({
                 <TableHead className="text-right">Reorder Level</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="text-right">Unit Price (KES)</TableHead>
+                <TableHead className="text-right">Restock</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -125,18 +127,47 @@ export const InventoryOverview = ({
                   </TableCell>
                 </TableRow>
               ) : (
-                filteredData.map((item) => (
-                  <TableRow key={item.itemCode || `row-${item.itemName}-${item.category}-${item.unit}-${item.reorderLevel}` }>
-                    <TableCell className="font-medium">{item.itemName}</TableCell>
-                    <TableCell className="font-mono text-sm">{item.itemCode}</TableCell>
-                    <TableCell>{item.category}</TableCell>
-                    <TableCell className="text-right font-medium">{item.quantity}</TableCell>
-                    <TableCell>{item.unit}</TableCell>
-                    <TableCell className="text-right">{item.reorderLevel}</TableCell>
-                    <TableCell>{getStockStatus(item)}</TableCell>
-                    <TableCell className="text-right">{typeof item.unitPrice === 'number' ? item.unitPrice.toFixed(2) : '-'}</TableCell>
-                  </TableRow>
-                ))
+                filteredData.slice(0, 15).map((item) => {
+                  const key = item.itemCode || `${item.itemName}-${item.category}-${item.unit}-${item.reorderLevel}`;
+                  const handleRestock = () => {
+                    const qty = parseInt(restockQty[key] || "", 10);
+                    if (!isNaN(qty) && qty > 0) {
+                      item.quantity += qty;
+                      setRestockQty(prev => ({ ...prev, [key]: "" }));
+                    }
+                  };
+                  return (
+                    <TableRow key={key}>
+                      <TableCell className="font-medium">{item.itemName}</TableCell>
+                      <TableCell className="font-mono text-sm">{item.itemCode}</TableCell>
+                      <TableCell>{item.category}</TableCell>
+                      <TableCell className="text-right font-medium">{item.quantity}</TableCell>
+                      <TableCell>{item.unit}</TableCell>
+                      <TableCell className="text-right">{item.reorderLevel}</TableCell>
+                      <TableCell>{getStockStatus(item)}</TableCell>
+                      <TableCell className="text-right">{typeof item.unitPrice === 'number' ? item.unitPrice.toFixed(2) : '-'}</TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex gap-2 items-center">
+                          <Input
+                            type="number"
+                            min="1"
+                            value={restockQty[key] || ""}
+                            onChange={e => setRestockQty(prev => ({ ...prev, [key]: e.target.value }))}
+                            placeholder="Qty"
+                            className="w-16"
+                          />
+                          <button
+                            type="button"
+                            className="bg-primary text-white px-2 py-1 rounded"
+                            onClick={handleRestock}
+                          >
+                            Add
+                          </button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
               )}
             </TableBody>
           </Table>

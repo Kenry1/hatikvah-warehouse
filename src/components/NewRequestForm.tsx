@@ -205,6 +205,7 @@ export function NewRequestForm({ open, onOpenChange }: NewRequestFormProps) {
       approverRole: "", // to be filled when approved
       companyId: user?.companyId || "",
       requestDate: new Date().toISOString(),
+      status: "submitted", // <-- ensure status is 'submitted' on initial submission
     };
     try {
       await addDoc(collection(db, "material_requests"), newRequest);
