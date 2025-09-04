@@ -12,26 +12,35 @@ import { MaterialRequest } from "../types/inventory";
 export const IssueRequestsManager = () => {
   const [requests, setRequests] = useState<MaterialRequest[]>([]);
   // Replace with your actual companyId logic
-  const companyId = "demo-company";
-  // Fetch requests from Firestore
+  const companyId = "gDf7U2T33LuVeCIcbrr8";
   useEffect(() => {
     async function fetchRequests() {
       try {
         const reqs = await getMaterialRequestList(companyId);
-        // Map Firestore type to UI type
-        const mapped = reqs.map((r) => ({
+        setRequests(reqs.map((r) => ({
           id: r.id ?? '',
-          siteId: '', // default since not in Firestore
-          siteName: '', // default since not in Firestore
-          requestDate: r.requestedDate ? new Date(r.requestedDate) : new Date(),
-          requestedBy: r.requesterId ?? '',
-          priority: (r.urgency as 'low' | 'medium' | 'high' | 'urgent') ?? 'low',
-          status: (r.status as 'pending' | 'fulfilled' | 'partial' | 'cancelled') ?? 'pending',
-          items: [], // default since not in Firestore
-          totalCost: r.price ?? 0,
-          notes: r.comments ?? '',
-        }));
-        setRequests(mapped);
+          requesterId: r.requesterId ?? '',
+          requestedBy: r.requestedBy ?? r.requesterId ?? '',
+          requestedByUsername: r.requestedByUsername ?? '',
+          requestorRole: r.requestorRole ?? '',
+          approver: r.approver ?? '',
+          approverRole: r.approverRole ?? '',
+          issuedBy: r.issuedBy ?? '',
+          requesterRole: r.requesterRole ?? '',
+          companyId: r.companyId ?? '',
+          requestDate: r.requestDate ?? '',
+          assignedTo: r.assignedTo ?? '',
+          comments: r.comments ?? '',
+          notes: r.notes ?? '',
+          price: r.price ?? 0,
+          totalCost: r.totalCost ?? 0,
+          urgency: r.urgency ?? 'low',
+          priority: r.priority ?? 'low',
+          siteId: r.siteId ?? '',
+          siteName: r.siteName ?? '',
+          items: r.items ?? [],
+          status: r.status ?? 'pending',
+        })));
       } catch (err) {
         console.error("Error fetching material requests:", err);
       }
@@ -66,29 +75,27 @@ export const IssueRequestsManager = () => {
     }
   };
 
-  const pendingRequests = requests.filter(req => req.status === "pending");
-  const processedRequests = requests.filter(req => req.status !== "pending");
+  // Use allowed status values from MaterialRequest type
+  const submittedRequests = requests.filter(req => req.status === "submitted");
+  const approvedRequests = requests.filter(req => req.status === "approved");
+  const issuedRequests = requests.filter(req => req.status === "issued");
 
   return (
     <div className="space-y-6">
-      {/* Pending Requests */}
+      {/* Submitted Requests */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center space-x-2">
-            <Clock className="h-5 w-5 text-yellow-500" />
-            <span>Pending Requests</span>
-            <Badge className="bg-yellow-500 text-black ml-2">
-              {pendingRequests.length}
-            </Badge>
+            <Clock className="h-5 w-5 text-blue-500" />
+            <span>Submitted Requests</span>
+            <Badge className="bg-blue-500 text-white ml-2">{submittedRequests.length}</Badge>
           </CardTitle>
         </CardHeader>
         <CardContent>
-          {pendingRequests.length === 0 ? (
+          {submittedRequests.length === 0 ? (
             <Alert>
               <CheckCircle className="h-4 w-4" />
-              <AlertDescription>
-                No pending requests. All requests have been processed.
-              </AlertDescription>
+              <AlertDescription>No submitted requests.</AlertDescription>
             </Alert>
           ) : (
             <div className="rounded-md border">
@@ -96,34 +103,82 @@ export const IssueRequestsManager = () => {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Request ID</TableHead>
+                    <TableHead>State</TableHead>
                     <TableHead>Requester</TableHead>
-                    <TableHead>Type</TableHead>
-                    <TableHead>Description</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Urgency</TableHead>
-                    <TableHead>Date</TableHead>
-                    <TableHead>Cost</TableHead>
-                    <TableHead>Actions</TableHead>
+                    <TableHead>Requester Role</TableHead>
+                    <TableHead>Approver</TableHead>
+                    <TableHead>Approver Role</TableHead>
+                    <TableHead>Request Date</TableHead>
+                    <TableHead>Priority</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {pendingRequests.map((request) => (
-                    <TableRow key={request.id ?? ''}>
-                      <TableCell className="font-mono text-sm">{request.id ?? ''}</TableCell>
+                  {submittedRequests.map((request) => (
+                    <TableRow key={request.id}>
+                      <TableCell className="font-mono text-sm">{request.id}</TableCell>
+                      <TableCell>{request.status}</TableCell>
                       <TableCell>{request.requestedByUsername ?? request.requestedBy ?? ''}</TableCell>
-                      <TableCell>{request.priority ?? ''}</TableCell>
+                      <TableCell>{request.requestorRole ?? ''}</TableCell>
+                      <TableCell>{request.approver ?? ''}</TableCell>
+                      <TableCell>{request.approverRole ?? ''}</TableCell>
                       <TableCell>{request.requestDate ? new Date(request.requestDate).toLocaleDateString() : "N/A"}</TableCell>
-                      <TableCell>{request.status ?? ''}</TableCell>
-                      <TableCell>{request.totalCost ? `$${request.totalCost.toFixed(2)}` : '-'}
-                      </TableCell>
-                      <TableCell>{request.notes ?? '-'}</TableCell>
+                      <TableCell>{request.priority ?? ''}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+      {/* Approved Requests */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center space-x-2">
+            <CheckCircle className="h-5 w-5 text-green-500" />
+            <span>Approved Requests</span>
+            <Badge className="bg-green-500 text-white ml-2">{approvedRequests.length}</Badge>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {approvedRequests.length === 0 ? (
+            <Alert>
+              <CheckCircle className="h-4 w-4" />
+              <AlertDescription>No approved requests.</AlertDescription>
+            </Alert>
+          ) : (
+            <div className="rounded-md border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Request ID</TableHead>
+                    <TableHead>State</TableHead>
+                    <TableHead>Requester</TableHead>
+                    <TableHead>Requester Role</TableHead>
+                    <TableHead>Approver</TableHead>
+                    <TableHead>Approver Role</TableHead>
+                    <TableHead>Request Date</TableHead>
+                    <TableHead>Priority</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {approvedRequests.map((request) => (
+                    <TableRow key={request.id}>
+                      <TableCell className="font-mono text-sm">{request.id}</TableCell>
+                      <TableCell>{request.status}</TableCell>
+                      <TableCell>{request.requestedByUsername ?? request.requestedBy ?? ''}</TableCell>
+                      <TableCell>{request.requestorRole ?? ''}</TableCell>
+                      <TableCell>{request.approver ?? ''}</TableCell>
+                      <TableCell>{request.approverRole ?? ''}</TableCell>
+                      <TableCell>{request.requestDate ? new Date(request.requestDate).toLocaleDateString() : "N/A"}</TableCell>
+                      <TableCell>{request.priority ?? ''}</TableCell>
                       <TableCell>
                         <Button
                           size="sm"
-                          className="bg-blue-600 hover:bg-blue-700 text-white"
-                          onClick={() => handleDispatchRequest(request.id ?? '')}
+                          variant="default"
+                          onClick={() => handleDispatchRequest(request.id)}
+                          disabled={request.status === "issued"}
                         >
-                          <CheckCircle className="h-4 w-4 mr-1" />
                           Dispatch
                         </Button>
                       </TableCell>
@@ -135,44 +190,49 @@ export const IssueRequestsManager = () => {
           )}
         </CardContent>
       </Card>
-      {/* Recent Processed Requests */}
+      {/* Issued Requests */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center space-x-2">
-            <Package className="h-5 w-5" />
-            <span>Recent Processed Requests</span>
+            <Package className="h-5 w-5 text-yellow-500" />
+            <span>Issued Requests</span>
+            <Badge className="bg-yellow-500 text-black ml-2">{issuedRequests.length}</Badge>
           </CardTitle>
         </CardHeader>
         <CardContent>
-          {processedRequests.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              No processed requests yet
-            </div>
+          {issuedRequests.length === 0 ? (
+            <Alert>
+              <CheckCircle className="h-4 w-4" />
+              <AlertDescription>No issued requests.</AlertDescription>
+            </Alert>
           ) : (
             <div className="rounded-md border">
               <Table>
                 <TableHeader>
                   <TableRow>
                     <TableHead>Request ID</TableHead>
+                    <TableHead>State</TableHead>
                     <TableHead>Requester</TableHead>
-                    <TableHead>Priority</TableHead>
+                    <TableHead>Requester Role</TableHead>
+                    <TableHead>Approver</TableHead>
+                    <TableHead>Approver Role</TableHead>
+                    <TableHead>Issued By</TableHead>
                     <TableHead>Request Date</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Total Cost</TableHead>
-                    <TableHead>Notes</TableHead>
+                    <TableHead>Priority</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {processedRequests.slice(0, 10).map((request) => (
+                  {issuedRequests.map((request) => (
                     <TableRow key={request.id}>
                       <TableCell className="font-mono text-sm">{request.id}</TableCell>
-                      <TableCell>{request.requestedByUsername ?? request.requestedBy ?? ''}</TableCell>
-                      <TableCell>{request.priority}</TableCell>
-                      <TableCell>{request.requestDate ? new Date(request.requestDate).toLocaleDateString() : "N/A"}</TableCell>
                       <TableCell>{request.status}</TableCell>
-                      <TableCell>{request.totalCost ? `$${request.totalCost.toFixed(2)}` : '-'}
-                      </TableCell>
-                      <TableCell>{request.notes ?? '-'}</TableCell>
+                      <TableCell>{request.requestedByUsername ?? request.requestedBy ?? ''}</TableCell>
+                      <TableCell>{request.requestorRole ?? ''}</TableCell>
+                      <TableCell>{request.approver ?? ''}</TableCell>
+                      <TableCell>{request.approverRole ?? ''}</TableCell>
+                      <TableCell>{request.issuedBy ?? ''}</TableCell>
+                      <TableCell>{request.requestDate ? new Date(request.requestDate).toLocaleDateString() : "N/A"}</TableCell>
+                      <TableCell>{request.priority ?? ''}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>

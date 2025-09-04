@@ -2,31 +2,27 @@
 export interface MaterialRequest {
   id?: string;
   requesterId: string;
+  requestedBy?: string;
+  requestedByUsername?: string;
+  requestorRole?: string;
+  approver?: string;
+  approverRole?: string;
+  issuedBy?: string;
+  requesterRole?: string;
   companyId: string;
-  materialType: string;
-  description: string;
-  status: 'pending' | 'approved' | 'rejected' | 'assigned';
-  requestedDate?: any;
+  requestDate?: any;
   assignedTo?: string;
   comments?: string;
+  notes?: string;
   price?: number;
-  urgency?: 'high' | 'medium' | 'low';
+  totalCost?: number;
+  urgency?: 'high' | 'medium' | 'low' | 'urgent';
+  priority?: 'high' | 'medium' | 'low' | 'urgent';
+  siteId?: string;
+  siteName?: string;
+  items?: any[];
+  status?: 'submitted' | 'approved' | 'issued' | 'pending' | 'fulfilled' | 'partial' | 'cancelled' | 'other';
 }
-
-export const getMaterialRequestList = async (companyId: string): Promise<MaterialRequest[]> => {
-  try {
-    const q = query(collection(db, 'material_requests'));
-    const querySnapshot = await getDocs(q);
-    const requests: MaterialRequest[] = [];
-    querySnapshot.forEach((doc) => {
-      requests.push({ id: doc.id, ...doc.data() } as MaterialRequest);
-    });
-    return requests;
-  } catch (error) {
-    console.error('Error fetching material requests: ', error);
-    throw new Error('Failed to fetch material requests.');
-  }
-};
 import { db } from './firebase';
 import { collection, addDoc, getDocs, query, where, serverTimestamp, doc, deleteDoc, updateDoc } from 'firebase/firestore';
 import { Toast } from '@/components/ui/toast';
@@ -217,7 +213,7 @@ export const getITAssetList = async (companyId: string): Promise<ITAsset[]> => {
 export const getAssetRequestList = async (companyId: string): Promise<AssetRequest[]> => {
   try {
     const q = query(
-      collection(db, 'assetRequests'),
+      collection(db, 'material_requests'), // <-- updated from 'assetRequests' to 'material_requests'
       where('companyId', '==', companyId)
     );
     const querySnapshot = await getDocs(q);
@@ -229,5 +225,21 @@ export const getAssetRequestList = async (companyId: string): Promise<AssetReque
   } catch (error) {
     console.error('Error fetching asset requests: ', error);
     throw new Error('Failed to fetch asset requests.');
+  }
+};
+
+// Function to get a list of material requests for a specific company
+export const getMaterialRequestList = async (companyId: string): Promise<MaterialRequest[]> => {
+  try {
+    const q = query(collection(db, 'material_requests'), where('companyId', '==', companyId));
+    const querySnapshot = await getDocs(q);
+    const requests: MaterialRequest[] = [];
+    querySnapshot.forEach((doc) => {
+      requests.push({ id: doc.id, ...doc.data() } as MaterialRequest);
+    });
+    return requests;
+  } catch (error) {
+    console.error('Error fetching material requests: ', error);
+    throw new Error('Failed to fetch material requests.');
   }
 };
