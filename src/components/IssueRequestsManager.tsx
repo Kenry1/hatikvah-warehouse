@@ -8,6 +8,9 @@ import { CheckCircle, XCircle, Clock, User, Calendar, Package } from "lucide-rea
 import { useToast } from "../hooks/use-toast";
 import { getMaterialRequestList } from "../lib/firestoreHelpers";
 import { MaterialRequest } from "../types/inventory";
+import { useAuth } from "../contexts/AuthContext";
+import { db } from "../lib/firebase";
+import { doc, updateDoc, serverTimestamp } from "firebase/firestore";
 
 export const IssueRequestsManager = () => {
   // Local materials list for lookup (can be replaced with Firestore fetch if needed)
@@ -15,6 +18,8 @@ export const IssueRequestsManager = () => {
   const [requests, setRequests] = useState<MaterialRequest[]>([]);
   const [showAssetsModal, setShowAssetsModal] = useState(false);
   const [selectedAssets, setSelectedAssets] = useState<any[] | null>(null);
+  const { user: currentUser } = useAuth();
+  const { toast } = useToast();
 
   useEffect(() => {
     const companyId = "gDf7U2T33LuVeCIcbrr8";
@@ -23,29 +28,27 @@ export const IssueRequestsManager = () => {
         const reqs = await getMaterialRequestList(companyId);
         setRequests(reqs.map((r) => ({
           ...r,
+          // Only include fields defined in MaterialRequest type
           id: r.id ?? '',
-          requesterId: r.requesterId ?? '',
-          requestedBy: r.requestedBy ?? r.requesterId ?? '',
+          requestedBy: r.requestedBy ?? '',
           requestedByUsername: r.requestedByUsername ?? '',
           requestorRole: r.requestorRole ?? '',
           approver: r.approver ?? '',
           approverRole: r.approverRole ?? '',
           issuedBy: r.issuedBy ?? '',
-          requesterRole: r.requesterRole ?? '',
-          companyId: r.companyId ?? '',
-          requestDate: r.requestDate ?? '',
-          assignedTo: r.assignedTo ?? '',
-          comments: r.comments ?? '',
           notes: r.notes ?? '',
-          price: r.price ?? 0,
           totalCost: r.totalCost ?? 0,
-          urgency: r.urgency ?? 'low',
           priority: r.priority ?? 'low',
           siteId: r.siteId ?? '',
           siteName: r.siteName ?? '',
           items: r.items ?? [],
           status: r.status ?? 'pending',
-        })));
+          // Convert requestDate to Date object if it's a string
+          requestDate: r.requestDate ? (typeof r.requestDate === 'string' ? new Date(r.requestDate) : r.requestDate) : undefined,
+          approvedBy: r.approvedBy ?? '',
+          approvedDate: r.approvedDate ? (typeof r.approvedDate === 'string' ? new Date(r.approvedDate) : r.approvedDate) : undefined,
+          fulfilledDate: r.fulfilledDate ? (typeof r.fulfilledDate === 'string' ? new Date(r.fulfilledDate) : r.fulfilledDate) : undefined,
+      })));
       } catch (err) {
         console.error("Error fetching material requests:", err);
       }
@@ -69,19 +72,66 @@ export const IssueRequestsManager = () => {
     const material = allMaterials.find(m => m.id === materialId);
     return material ? (material.itemName || material.name) : "Unknown";
   };
-  const { toast } = useToast();
 
-  const handleDispatchRequest = (requestId: string) => {
-    setRequests(prev => prev.map(req =>
-      req.id === requestId
-        ? { ...req, status: "issued" }
-        : req
-    ));
-    toast({
-      title: "Request Dispatched",
-      description: "Stock has been dispatched from the warehouse.",
-      className: "bg-blue-500 text-white",
-    });
+  const handleDispatchRequest = async (requestId: string) => {
+    if (!currentUser?.username) {
+      toast({
+        title: "Error",
+        description: "User not authenticated.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Find the request to check its status
+    const request = requests.find(r => r.id === requestId);
+    if (!request) {
+      toast({
+        title: "Error",
+        description: "Request not found.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (request.status !== "approved") {
+      toast({
+        title: "Error",
+        description: "Only approved requests can be dispatched.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      // Update Firestore
+      const requestRef = doc(db, "material_requests", requestId);
+      await updateDoc(requestRef, {
+        status: "issued",
+        issuedBy: currentUser.username,
+        fulfilledDate: serverTimestamp(),
+      });
+
+      // Update local state
+      setRequests(prev => prev.map(req =>
+        req.id === requestId
+          ? { ...req, status: "issued", issuedBy: currentUser.username, fulfilledDate: new Date() }
+          : req
+      ));
+
+      toast({
+        title: "Request Dispatched",
+        description: "Stock has been dispatched from the warehouse.",
+        className: "bg-blue-500 text-white",
+      });
+    } catch (error) {
+      console.error("Error dispatching request:", error);
+      toast({
+        title: "Error",
+        description: "Failed to dispatch request. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   const getStatusBadge = (status: string) => {

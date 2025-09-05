@@ -1,3 +1,29 @@
+export interface AssetRequest {
+  id?: string;
+  requesterId: string;
+  companyId: string;
+  assetType: string;
+  description: string;
+  status: 'pending' | 'approved' | 'rejected' | 'assigned';
+  requestedDate?: any;
+  assignedTo?: string;
+  comments?: string;
+}
+
+export interface ITAsset {
+  id?: string;
+  name: string;
+  type: string;
+  serialNumber: string;
+  status: string;
+  location: string;
+  assignedTo?: string;
+  purchaseDate: string;
+  warrantyEndDate?: string;
+  companyId: string;
+  createdAt?: any;
+  updatedAt?: any;
+}
 export interface Site {
   id: string;
   name: string;

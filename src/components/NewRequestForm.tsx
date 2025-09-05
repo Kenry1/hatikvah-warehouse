@@ -48,7 +48,7 @@ import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 // (already imported above)
 import { db } from "../lib/firebase";
-import { collection, getDocs, addDoc } from "firebase/firestore";
+import { collection, getDocs, addDoc, runTransaction, doc } from "firebase/firestore";
 import { useEffect, useState, useContext } from "react";
 import { AuthContext } from "../contexts/AuthContext";
 
@@ -137,8 +137,9 @@ export function NewRequestForm({ open, onOpenChange }: NewRequestFormProps) {
   };
 
   const getAvailableStock = (materialId: string) => {
-    const stock = stockLevels.find(s => s.id === materialId);
-    return stock ? stock.quantity : 0;
+  const stock = stockLevels.find(s => s.id === materialId);
+  // Prefer availableQuantity; fall back to quantity for legacy docs
+  return stock ? (stock.availableQuantity ?? stock.quantity ?? 0) : 0;
   };
 
   const getMaterialInfo = (materialId: string) => {
@@ -205,23 +206,47 @@ export function NewRequestForm({ open, onOpenChange }: NewRequestFormProps) {
       approverRole: "", // to be filled when approved
       companyId: user?.companyId || "",
       requestDate: new Date().toISOString(),
-      status: "submitted", // <-- ensure status is 'submitted' on initial submission
     };
     try {
       await addDoc(collection(db, "material_requests"), newRequest);
       // Deduct requested quantities from solar_warehouse inventory using Firestore transactions
-      const { runTransaction, doc: docRef } = await import("firebase/firestore");
+      // Firestore requires that all reads inside a transaction are completed before any writes.
+      // First perform all reads, then perform updates.
       await runTransaction(db, async (transaction) => {
-        for (const item of values.items) {
-          const materialDocRef = docRef(db, "solar_warehouse", item.materialId);
-          const materialDocSnap = await transaction.get(materialDocRef);
+        const refs = values.items.map((item) => doc(db, "solar_warehouse", item.materialId));
+        // Read all documents first
+        const snaps = await Promise.all(refs.map((ref) => transaction.get(ref)));
+
+        // Validate existence
+        snaps.forEach((materialDocSnap, idx) => {
           if (!materialDocSnap.exists()) {
-            throw new Error(`Material with ID ${item.materialId} does not exist.`);
+            throw new Error(`Material with ID ${values.items[idx].materialId} does not exist.`);
           }
-          const currentQty = materialDocSnap.data().quantity ?? materialDocSnap.data().availableQuantity ?? 0;
+        });
+
+        // Now perform updates
+        snaps.forEach((materialDocSnap, idx) => {
+          const item = values.items[idx];
+          const data = materialDocSnap.data();
+          const currentQty = (data.availableQuantity ?? data.quantity ?? data.available ?? 0) as number;
           const newQty = Math.max(currentQty - item.quantity, 0);
-          transaction.update(materialDocRef, { quantity: newQty, availableQuantity: newQty });
-        }
+          const ref = refs[idx];
+
+          // Update the most relevant field(s) present in the document so UI remains consistent.
+          const updatePayload: any = {};
+          if (Object.prototype.hasOwnProperty.call(data, 'availableQuantity')) {
+            updatePayload.availableQuantity = newQty;
+          }
+          if (Object.prototype.hasOwnProperty.call(data, 'quantity')) {
+            updatePayload.quantity = newQty;
+          }
+          // Fallback: write availableQuantity if neither field exists
+          if (Object.keys(updatePayload).length === 0) {
+            updatePayload.availableQuantity = newQty;
+          }
+
+          transaction.update(ref, updatePayload);
+        });
       });
       toast({
         title: existingSite ? "Request Added to Existing Site" : "New Site & Request Created",

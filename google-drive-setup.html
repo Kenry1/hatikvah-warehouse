@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Google Drive Shared Drive Setup</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .button {
+            background: #4285f4;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        .button:hover {
+            background: #3367d6;
+        }
+        .button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .status {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 4px;
+        }
+        .success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        pre {
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+            font-size: 12px;
+        }
+        .step {
+            margin: 15px 0;
+            padding: 10px;
+            background: #f8f9fa;
+            border-left: 4px solid #4285f4;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 Google Drive Shared Drive Setup</h1>
+        <p>This tool will help you set up a shared drive for your file uploads.</p>
+
+        <div class="step">
+            <h3>Step 1: Share Existing Drive with Service Account</h3>
+            <p>You already have a shared drive created. Now share it with the new service account:</p>
+            <ol>
+                <li>Go to <a href="https://drive.google.com/drive/folders/1PDBvRJmFNjukjdmxU0lcz2NopEZSaBHQ" target="_blank">your shared drive</a></li>
+                <li>Click "Share" or the share icon</li>
+                <li>Add the service account email below as <strong>Manager</strong></li>
+                <li>Click "Send"</li>
+            </ol>
+            <p><strong>Service Account Email:</strong></p>
+            <pre>drive-uploader@sunlit-cab-471213-k9.iam.gserviceaccount.com</pre>
+            <p><strong>Drive ID (already set):</strong></p>
+            <input type="text" id="driveIdInput" value="1PDBvRJmFNjukjdmxU0lcz2NopEZSaBHQ" placeholder="Paste Drive ID here" style="width: 100%; padding: 8px; margin: 5px 0; border: 1px solid #ccc; border-radius: 4px;">
+            <button class="button" onclick="setDriveId()">Confirm Drive ID</button>
+            <div id="createStatus"></div>
+        </div>
+
+        <div class="step">
+            <h3>Step 2: Share with Service Account</h3>
+            <p>After creating the drive, share it with this service account as <strong>Manager</strong>:</p>
+            <pre>drive-uploader@sunlit-cab-471213-k9.iam.gserviceaccount.com</pre>
+            <button class="button" onclick="openGoogleDrive()">Open Google Drive</button>
+        </div>
+
+        <div class="step">
+            <h3>Step 3: Update Configuration</h3>
+            <p>Copy the Drive ID from Step 1 and update it in your code:</p>
+            <pre>// In googleDriveService.ts
+const SHARED_DRIVE_ID = 'PASTE_DRIVE_ID_HERE';</pre>
+            <div id="configStatus"></div>
+        </div>
+
+        <div class="step">
+            <h3>Step 4: Test Upload</h3>
+            <p>Test that file uploads work with the new shared drive.</p>
+            <button class="button" id="testBtn" onclick="testUpload()" disabled>Test Upload</button>
+            <div id="testStatus"></div>
+        </div>
+
+        <div class="status info">
+            <strong>📋 Instructions:</strong>
+            <ol>
+                <li>Share your existing drive with the new service account as Manager</li>
+                <li>Confirm the Drive ID is set correctly</li>
+                <li>Update the SHARED_DRIVE_ID in your code</li>
+                <li>Test the upload functionality</li>
+            </ol>
+        </div>
+    </div>
+
+    <script>
+        // Google Drive configuration
+    const SERVICE_ACCOUNT_EMAIL = "drive-uploader@sunlit-cab-471213-k9.iam.gserviceaccount.com";
+    // PRIVATE KEY REMOVED: Do not embed secrets in client-side code.
+    const PRIVATE_KEY = "";
+
+        let accessToken = null;
+        let createdDriveId = null;
+
+        async function initializeDrive() {
+            try {
+                console.log('🔐 Generating JWT...');
+
+                const jwt = await generateJWT();
+                console.log('🔐 Generated JWT:', jwt.substring(0, 50) + '...');
+
+                const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: new URLSearchParams({
+                        grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer',
+                        assertion: jwt,
+                    }),
+                });
+
+                if (!tokenResponse.ok) {
+                    const errorText = await tokenResponse.text();
+                    console.error('❌ Token response error:', errorText);
+                    throw new Error(`Token request failed: ${tokenResponse.status} - ${errorText}`);
+                }
+
+                const tokenData = await tokenResponse.json();
+                accessToken = tokenData.access_token;
+
+                console.log('✅ Google Drive service initialized');
+                console.log('🔑 Access token obtained:', accessToken ? 'Yes' : 'No');
+            } catch (error) {
+                console.error('❌ Error initializing Google Drive:', error);
+                throw error;
+            }
+        }
+
+        async function generateJWT() {
+            const header = {
+                alg: 'RS256',
+                typ: 'JWT',
+            };
+
+            const now = Math.floor(Date.now() / 1000);
+            const payload = {
+                iss: SERVICE_ACCOUNT_EMAIL,
+                scope: 'https://www.googleapis.com/auth/drive',
+                aud: 'https://oauth2.googleapis.com/token',
+                exp: now + 3600,
+                iat: now,
+            };
+
+            const encodedHeader = btoa(JSON.stringify(header)).replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
+            const encodedPayload = btoa(JSON.stringify(payload)).replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
+
+            const message = `${encodedHeader}.${encodedPayload}`;
+            const signature = await signMessage(message, PRIVATE_KEY);
+
+            return `${message}.${signature}`;
+        }
+
+        async function signMessage(message, privateKey) {
+            const keyData = privateKey
+                .replace(/-----BEGIN PRIVATE KEY-----/, '')
+                .replace(/-----END PRIVATE KEY-----/, '')
+                .replace(/\s/g, '');
+
+            const binaryKey = Uint8Array.from(atob(keyData), c => c.charCodeAt(0));
+
+            const cryptoKey = await crypto.subtle.importKey(
+                'pkcs8',
+                binaryKey,
+                {
+                    name: 'RSASSA-PKCS1-v1_5',
+                    hash: 'SHA-256',
+                },
+                false,
+                ['sign']
+            );
+
+            const signature = await crypto.subtle.sign('RSASSA-PKCS1-v1_5', cryptoKey, new TextEncoder().encode(message));
+            const signatureB64 = btoa(String.fromCharCode(...new Uint8Array(signature)))
+                .replace(/=/g, '')
+                .replace(/\+/g, '-')
+                .replace(/\//g, '_');
+
+            return signatureB64;
+        }
+
+        async function setDriveId() {
+            const driveIdInput = document.getElementById('driveIdInput');
+            const status = document.getElementById('createStatus');
+            const driveId = driveIdInput.value.trim();
+
+            if (!driveId) {
+                status.innerHTML = '<div class="status error">❌ Please enter a Drive ID</div>';
+                return;
+            }
+
+            // Basic validation - Drive IDs are typically 19-33 characters long
+            if (driveId.length < 19 || driveId.length > 33) {
+                status.innerHTML = '<div class="status error">❌ Invalid Drive ID format. Drive IDs are typically 19-33 characters long.</div>';
+                return;
+            }
+
+            try {
+                // Ensure we have a token for verification
+                // Service-account flow disabled in favor of OAuth. This tool is read-only for ID checks.
+                // if (!accessToken) { await initializeDrive(); }
+
+                const info = await verifyFolderOrDrive(driveId);
+
+                createdDriveId = driveId;
+                const isFolder = info.mimeType === 'application/vnd.google-apps.folder';
+                const isSharedDrive = !!info.driveId;
+
+                status.innerHTML = `
+                    <div class="status success">
+                        ✅ Target set!<br>
+                        <strong>ID:</strong> ${driveId}<br>
+                        <strong>Name:</strong> ${info.name || '(unknown)'}<br>
+                        <strong>Type:</strong> ${isFolder ? 'Folder' : 'File/Drive'}<br>
+                        <strong>Shared Drive:</strong> ${isSharedDrive ? 'Yes' : 'No'}
+                    </div>
+                `;
+
+                // Enable test button
+                document.getElementById('testBtn').disabled = false;
+
+                // Show configuration update
+                document.getElementById('configStatus').innerHTML = `
+                    <div class="status info">
+                        📝 Update your code with:<br>
+                        <pre>const SHARED_DRIVE_ID = '${driveId}';</pre>
+                        ${isSharedDrive ? '' : '<div>⚠️ This does not look like a Shared Drive item. Uploads may hit service account quota.</div>'}
+                    </div>
+                `;
+
+                console.log('✅ Drive/Folder verified:', info);
+            } catch (e) {
+                status.innerHTML = `
+                    <div class="status error">❌ Could not verify ID. ${e.message}</div>
+                `;
+                console.error('Verify error:', e);
+            }
+        }
+
+        async function verifyFolderOrDrive(id) {
+            const url = `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(id)}?fields=id,name,mimeType,driveId,parents&supportsAllDrives=true`;
+            const res = await fetch(url, {
+                headers: { Authorization: `Bearer ${accessToken}` },
+            });
+            if (!res.ok) {
+                const txt = await res.text();
+                throw new Error(`${res.status} ${txt}`);
+            }
+            return res.json();
+        }
+
+        function openGoogleDrive() {
+            window.open('https://drive.google.com', '_blank');
+        }
+
+        async function testUpload() {
+            const status = document.getElementById('testStatus');
+            status.innerHTML = '<div class="status info">⏳ Testing upload...</div>';
+
+            try {
+                // if (!accessToken) { await initializeDrive(); }
+
+                // Test with a simple file
+                const testFile = new File(['test content'], 'test.txt', { type: 'text/plain' });
+                const metadata = { title: 'Test Upload' };
+
+                const result = await uploadFile(testFile, metadata);
+
+                status.innerHTML = `
+                    <div class="status success">
+                        ✅ Upload test successful!<br>
+                        <strong>File ID:</strong> ${result}
+                    </div>
+                `;
+            } catch (error) {
+                status.innerHTML = `
+                    <div class="status error">
+                        ❌ Upload test failed: ${error.message}
+                    </div>
+                `;
+                console.error('Test upload error:', error);
+            }
+        }
+
+        async function uploadFile(file, metadata) {
+            try {
+                if (!accessToken) {
+                    await initializeDrive();
+                }
+
+                console.log(`📤 Uploading ${file.name} to Google Drive...`);
+
+                // Create file metadata
+                const fileMetadata = {
+                    name: `${metadata.title}_${new Date().toISOString().split('T')[0]}_${file.name}`,
+                };
+
+                // Add parents if we have a created drive ID
+                if (createdDriveId) {
+                    fileMetadata.parents = [createdDriveId];
+                }
+
+                // Convert file to base64
+                const base64Data = await fileToBase64(file);
+
+                // Upload using multipart
+                // Always include supportsAllDrives for safety
+                const uploadUrl = 'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&supportsAllDrives=true';
+
+                const uploadResponse = await fetch(uploadUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${accessToken}`,
+                        'Content-Type': 'multipart/related; boundary=boundary123',
+                    },
+                    body: createMultipartBody(fileMetadata, base64Data, file.type),
+                });
+
+                console.log('📄 File metadata:', fileMetadata);
+                console.log('🌐 Upload URL:', uploadUrl);
+
+                console.log('📡 Upload response status:', uploadResponse.status);
+
+                if (!uploadResponse.ok) {
+                    let details;
+                    try { details = await uploadResponse.json(); } catch (_) { details = await uploadResponse.text(); }
+                    const msg = details && details.error && details.error.message ? details.error.message : String(details);
+                    console.error('❌ Upload response error:', details);
+                    throw new Error(`Upload failed: ${uploadResponse.status} ${msg}`);
+                }
+
+                const uploadResult = await uploadResponse.json();
+                console.log(`✅ File uploaded successfully: ${uploadResult.id}`);
+
+                return uploadResult.id;
+            } catch (error) {
+                console.error('❌ Error uploading file:', error);
+                throw error;
+            }
+        }
+
+        function createMultipartBody(metadata, base64Data, mimeType) {
+            const boundary = 'boundary123';
+            const metadataPart = JSON.stringify(metadata);
+
+            return `--${boundary}\r\n` +
+                   `Content-Type: application/json; charset=UTF-8\r\n\r\n` +
+                   `${metadataPart}\r\n` +
+                   `--${boundary}\r\n` +
+                   `Content-Type: ${mimeType}\r\n` +
+                   `Content-Transfer-Encoding: base64\r\n\r\n` +
+                   `${base64Data}\r\n` +
+                   `--${boundary}--`;
+        }
+
+        function fileToBase64(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.readAsDataURL(file);
+                reader.onload = () => {
+                    const base64 = reader.result;
+                    const base64Data = base64.split(',')[1];
+                    resolve(base64Data);
+                };
+                reader.onerror = error => reject(error);
+            });
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('🔧 Google Drive Setup Tool Loaded');
+        });
+    </script>
+</body>
+</html></content>
+<parameter name="filePath">c:\Users\Public\ops-flow-ui-system-\google-drive-setup.html

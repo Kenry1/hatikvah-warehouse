@@ -24,7 +24,7 @@ import {
   SlidersHorizontal
 } from 'lucide-react';
 import { FilterOption } from '@/types/common';
-import { DialogHeader, DialogTitle } from '@/components/ui/dialog'; // Import DialogTitle
+// Removed Dialog components to avoid context errors when used within a Popover
 
 interface AdvancedFiltersProps {
   filterOptions: FilterOption[];
@@ -148,9 +148,9 @@ export function AdvancedFilters({
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-80 p-4" align="start">
-              <DialogHeader>
-                <DialogTitle>Advanced Filters</DialogTitle> {/* Added DialogTitle here */}
-              </DialogHeader>
+              <div className="mb-2">
+                <h4 className="font-semibold text-sm">Advanced Filters</h4>
+              </div>
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <h4 className="font-medium">Filters</h4>

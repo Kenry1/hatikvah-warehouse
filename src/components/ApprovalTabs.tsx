@@ -107,9 +107,12 @@ import {
 } from "lucide-react"
 import ApprovalRecordsTable from "./ApprovalRecordsTable"
 import { useEffect, useState } from "react"
+import { AdvancedFilters } from "@/components/common/AdvancedFilters"
+import { useAdvancedFilter } from "@/hooks/useAdvancedFilter"
+import type { FilterOption } from "@/types/common"
 import { useToast } from "@/hooks/use-toast"
-import { getAssetRequestList, getMaterialRequestList } from "@/lib/firestoreHelpers"
-import { doc, updateDoc } from "firebase/firestore"
+import { getMaterialRequestList } from "@/lib/firestoreHelpers"
+import { doc, updateDoc, runTransaction, deleteDoc } from "firebase/firestore"
 import { getDocs, collection } from "firebase/firestore"
 import { db } from "@/lib/firebase"
 import { useAuth } from "@/contexts/AuthContext"
@@ -139,18 +142,64 @@ export function ApprovalTabs() {
     fetchMaterials();
   }, []);
   const { user } = useAuth();
-  const [requests, setRequests] = useState<any[]>([]);
   const [materialRequests, setMaterialRequests] = useState<any[]>([]);
 
   useEffect(() => {
     if (!user?.companyId) return;
-    getAssetRequestList(user.companyId).then(setRequests);
-    getMaterialRequestList(user.companyId).then(setMaterialRequests);
+    getMaterialRequestList(user.companyId).then(setMaterialRequests).catch((e) => {
+      console.error('Error fetching material requests:', e);
+      setMaterialRequests([]);
+    });
   }, [user]);
 
-  // Categorize requests by assetType
-  const fuelRequests = requests.filter(r => r.assetType?.toLowerCase().includes("fuel"));
-  const financeRequests = requests.filter(r => r.assetType?.toLowerCase().includes("finance"));
+  // Asset requests disabled; show empty for Fuel/Finance (data source restricted to material_requests)
+  const fuelRequests: any[] = [];
+  const financeRequests: any[] = [];
+
+  // ---------- Filters setup ----------
+  const fuelFilterOptions: FilterOption[] = [
+    { label: 'Status', value: 'status', type: 'select', options: [
+      { label: 'Pending', value: 'pending' },
+      { label: 'Approved', value: 'approved' },
+      { label: 'Rejected', value: 'rejected' },
+    ]},
+    { label: 'Urgency', value: 'urgency', type: 'select', options: [
+      { label: 'High', value: 'high' },
+      { label: 'Medium', value: 'medium' },
+      { label: 'Low', value: 'low' },
+    ]},
+  ];
+  const financeFilterOptions: FilterOption[] = fuelFilterOptions;
+  const materialFilterOptions: FilterOption[] = [
+    { label: 'Status', value: 'status', type: 'select', options: [
+      { label: 'Pending', value: 'pending' },
+      { label: 'Approved', value: 'approved' },
+      { label: 'Rejected', value: 'rejected' },
+    ]},
+    { label: 'Priority', value: 'priority', type: 'select', options: [
+      { label: 'High', value: 'high' },
+      { label: 'Medium', value: 'medium' },
+      { label: 'Low', value: 'low' },
+    ]},
+    { label: 'Site', value: 'siteName', type: 'text' },
+    { label: 'Requester', value: 'requestedByUsername', type: 'text' },
+  ];
+
+  const fuelFilter = useAdvancedFilter(
+    fuelRequests,
+    fuelFilterOptions,
+    ['title', 'assetType', 'requestor', 'requesterId', 'description']
+  );
+  const financeFilter = useAdvancedFilter(
+    financeRequests,
+    financeFilterOptions,
+    ['title', 'assetType', 'requestor', 'requesterId', 'description']
+  );
+  const materialFilter = useAdvancedFilter(
+    materialRequests,
+    materialFilterOptions,
+    ['siteName', 'requestedByUsername']
+  );
 
 // Helper functions for status/urgency
 function getUrgencyColor(urgency: string) {
@@ -203,10 +252,9 @@ const MaterialRequestCard = ({ request, onApprove }: { request: any, onApprove: 
     setLoading(true);
     try {
       // Restore inventory using Firestore transaction
-      const { runTransaction, doc: docRef, deleteDoc } = await import("firebase/firestore");
       await runTransaction(db, async (transaction) => {
         for (const item of request.items) {
-          const materialDocRef = docRef(db, "solar_warehouse", item.materialId);
+          const materialDocRef = doc(db, "solar_warehouse", item.materialId);
           const materialDocSnap = await transaction.get(materialDocRef);
           if (!materialDocSnap.exists()) continue;
           const currentQty = materialDocSnap.data().quantity ?? materialDocSnap.data().availableQuantity ?? 0;
@@ -214,7 +262,7 @@ const MaterialRequestCard = ({ request, onApprove }: { request: any, onApprove: 
           transaction.update(materialDocRef, { quantity: newQty, availableQuantity: newQty });
         }
         // Mark the request as rejected instead of deleting
-        transaction.update(docRef(db, "material_requests", request.id), { status: "rejected" });
+        transaction.update(doc(db, "material_requests", request.id), { status: "rejected" });
       });
   toast({ title: "Request Discarded", description: "Request marked as rejected and inventory restored." });
   if (typeof request.onDiscard === "function") request.onDiscard(request.id);
@@ -342,17 +390,39 @@ const MaterialRequestCard = ({ request, onApprove }: { request: any, onApprove: 
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="fuel" className="mt-6">
+        <TabsContent value="fuel" className="mt-6 space-y-4">
+          <AdvancedFilters
+            filterOptions={fuelFilterOptions}
+            filters={fuelFilter.filters}
+            onFilterChange={fuelFilter.updateFilter}
+            onClearFilter={fuelFilter.clearFilter}
+            onClearAll={fuelFilter.clearAllFilters}
+            searchTerm={fuelFilter.searchTerm}
+            onSearchChange={fuelFilter.setSearchTerm}
+            searchPlaceholder="Search fuel requests..."
+            hasActiveFilters={fuelFilter.hasActiveFilters}
+          />
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
-            {fuelRequests.map((request) => (
+            {fuelFilter.filteredData.map((request) => (
               <RequestCard key={request.id} request={request} />
             ))}
           </div>
         </TabsContent>
 
-        <TabsContent value="material" className="mt-6">
+        <TabsContent value="material" className="mt-6 space-y-4">
+          <AdvancedFilters
+            filterOptions={materialFilterOptions}
+            filters={materialFilter.filters}
+            onFilterChange={materialFilter.updateFilter}
+            onClearFilter={materialFilter.clearFilter}
+            onClearAll={materialFilter.clearAllFilters}
+            searchTerm={materialFilter.searchTerm}
+            onSearchChange={materialFilter.setSearchTerm}
+            searchPlaceholder="Search material requests..."
+            hasActiveFilters={materialFilter.hasActiveFilters}
+          />
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
-            {materialRequests.map((request) => (
+            {materialFilter.filteredData.map((request) => (
               <MaterialRequestCard
                 key={request.id}
                 request={{
@@ -362,24 +432,28 @@ const MaterialRequestCard = ({ request, onApprove }: { request: any, onApprove: 
                   },
                 }}
                 onApprove={async (id) => {
-                  // Get current user for approver info
-                  const approver = user?.username || user?.id || "";
-                  const approverRole = user?.role || "";
-                  await updateDoc(doc(db, "material_requests", id), {
-                    status: "approved",
-                    approver,
-                    approverRole
-                  });
-                  setMaterialRequests((prev) => prev.map(r => r.id === id ? { ...r, status: "approved", approver, approverRole } : r));
+                  await updateDoc(doc(db, "material_requests", id), { status: "approved" });
+                  setMaterialRequests((prev) => prev.map(r => r.id === id ? { ...r, status: "approved" } : r));
                 }}
               />
             ))}
           </div>
         </TabsContent>
 
-        <TabsContent value="finance" className="mt-6">
+        <TabsContent value="finance" className="mt-6 space-y-4">
+          <AdvancedFilters
+            filterOptions={financeFilterOptions}
+            filters={financeFilter.filters}
+            onFilterChange={financeFilter.updateFilter}
+            onClearFilter={financeFilter.clearFilter}
+            onClearAll={financeFilter.clearAllFilters}
+            searchTerm={financeFilter.searchTerm}
+            onSearchChange={financeFilter.setSearchTerm}
+            searchPlaceholder="Search finance requests..."
+            hasActiveFilters={financeFilter.hasActiveFilters}
+          />
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
-            {financeRequests.map((request) => (
+            {financeFilter.filteredData.map((request) => (
               <RequestCard key={request.id} request={request} />
             ))}
           </div>

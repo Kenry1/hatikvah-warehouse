@@ -1,3 +1,17 @@
+export interface LeaveRequest {
+  id?: string;
+  employeeId: string;
+  employeeName: string;
+  department: string;
+  leaveType: string;
+  startDate: string;
+  endDate: string;
+  days: number;
+  reason: string;
+  status: 'pending' | 'approved' | 'rejected';
+  companyId: string;
+  appliedDate?: any;
+}
 export interface FilterOption {
   label: string;
   value: string;

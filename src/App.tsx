@@ -2,7 +2,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Outlet } from "react-router-dom";
+import { Routes, Route, Outlet } from "react-router-dom";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import { Dashboard } from "./pages/Dashboard";
@@ -18,9 +18,11 @@ import { FieldTripAlert } from "./pages/FieldTripAlert"; // Import the new Field
 import IncomingTickets from "./pages/IncomingTickets"; // Import IncomingTickets component
 import AssetInventory from "./pages/AssetInventory"; // Import AssetInventory component
 import SafetyReportsViewer from "./pages/sreportsv"; // Import the new SafetyReportsViewer component
+import SiteDocumentation from "./pages/SiteDocumentation";
 import { RouteGuard } from "./components/navigation/RouteGuard";
 import { DashboardLayout } from "./components/layout/DashboardLayout";
 import ProjectTrackingPage from "./pages/ProjectTrackingPage";
+// DriveOAuthTest removed after OAuth wiring was verified
 
 const queryClient = new QueryClient();
 
@@ -29,8 +31,7 @@ const App = () => (
     <TooltipProvider>
       <Toaster />
       <Sonner />
-      <BrowserRouter>
-        <Routes>
+  <Routes>
           <Route path="/" element={
             <RouteGuard requireAuth={false}>
               <Index />
@@ -99,12 +100,13 @@ const App = () => (
             <Route path="/incoming-tickets" element={<IncomingTickets />} /> 
             <Route path="/it-assets" element={<AssetInventory />} /> {/* New route for AssetInventory */} 
             <Route path="/sreportsv" element={<SafetyReportsViewer />} /> {/* New route for SafetyReportsViewer */} 
-          </Route>
+            <Route path="/site-docs" element={<SiteDocumentation />} />
+            {/* Drive OAuth test route removed */}
+      </Route>
 
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
-        </Routes>
-      </BrowserRouter>
+  </Routes>
     </TooltipProvider>
   </QueryClientProvider>
 );

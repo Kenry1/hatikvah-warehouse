@@ -5,21 +5,59 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ArrowDownUp, History, Search } from "lucide-react";
-import { mockTransactions, Transaction } from "@/lib/mockData";
+import { useEffect } from "react";
+import { getMaterialRequestList } from "@/lib/firestoreHelpers";
+import { db } from "@/lib/firebase";
+import { collection, getDocs } from "firebase/firestore";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 
 export const AuditTrail = () => {
-  const [transactions] = useState<Transaction[]>(mockTransactions);
+  const [requests, setRequests] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
+  const [viewItems, setViewItems] = useState<any[] | null>(null);
+  const [allMaterials, setAllMaterials] = useState<any[]>([]);
+  const [siteFilter, setSiteFilter] = useState("all");
+  const [userFilter, setUserFilter] = useState("all");
+  const [issuedByFilter, setIssuedByFilter] = useState("all");
 
-  const filteredTransactions = transactions.filter(tx => {
-    const typeMatch = typeFilter === "all" || tx.type.toLowerCase() === typeFilter;
-    const searchMatch = searchTerm === "" || 
-      tx.itemName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      tx.itemCode.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      tx.user.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      tx.ref.toLowerCase().includes(searchTerm.toLowerCase());
-    return typeMatch && searchMatch;
+  useEffect(() => {
+    getMaterialRequestList().then(setRequests).catch(console.error);
+    // load materials for name lookup
+    (async function loadMaterials(){
+      try{
+        const snap = await getDocs(collection(db, 'solar_warehouse'));
+        const mats = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        setAllMaterials(mats);
+      } catch(e){
+        console.error('Failed to load materials for audit trail', e);
+      }
+    })();
+  }, []);
+
+  const getMaterialName = (materialId?: string) => {
+    if(!materialId) return undefined;
+    const m = allMaterials.find(a => String(a.id) === String(materialId));
+    return m?.materialName || m?.name || m?.itemName;
+  }
+
+  // Get unique options for filters
+  const siteOptions = Array.from(new Set(requests.map(r => r.siteName).filter(Boolean)));
+  const userOptions = Array.from(new Set(requests.map(r => r.requestedByUsername).filter(Boolean)));
+  const issuedByOptions = Array.from(new Set(requests.map(r => r.issuedBy).filter(Boolean)));
+
+  const filteredRequests = requests.filter(r => {
+    const search = searchTerm.trim().toLowerCase();
+    const searchMatch = !search ||
+      (r.id && r.id.toLowerCase().includes(search)) ||
+      (r.requestedByUsername && r.requestedByUsername.toLowerCase().includes(search)) ||
+      (r.approver && r.approver.toLowerCase().includes(search)) ||
+      (r.issuedBy && r.issuedBy.toLowerCase().includes(search));
+    const siteMatch = siteFilter === "all" || r.siteName === siteFilter;
+    const userMatch = userFilter === "all" || r.requestedByUsername === userFilter;
+    const issuedByMatch = issuedByFilter === "all" || r.issuedBy === issuedByFilter;
+    return searchMatch && siteMatch && userMatch && issuedByMatch;
   });
 
   return (
@@ -57,35 +95,69 @@ export const AuditTrail = () => {
             </Select>
           </div>
         </div>
+        {/* Additional Filters */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+          <Select value={siteFilter} onValueChange={setSiteFilter}>
+            <SelectTrigger>
+              <SelectValue placeholder="Filter by Site" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Sites</SelectItem>
+              {siteOptions.map(site => (
+                <SelectItem key={site} value={site}>{site}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={userFilter} onValueChange={setUserFilter}>
+            <SelectTrigger>
+              <SelectValue placeholder="Filter by User" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Users</SelectItem>
+              {userOptions.map(user => (
+                <SelectItem key={user} value={user}>{user}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={issuedByFilter} onValueChange={setIssuedByFilter}>
+            <SelectTrigger>
+              <SelectValue placeholder="Filter by Issued By" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Issued By</SelectItem>
+              {issuedByOptions.map(issued => (
+                <SelectItem key={issued} value={issued}>{issued}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
 
         <div className="rounded-md border">
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Type</TableHead>
-                <TableHead>Item Name</TableHead>
-                <TableHead>Item Code</TableHead>
-                <TableHead>Quantity</TableHead>
-                <TableHead>User/Source</TableHead>
-                <TableHead>Timestamp</TableHead>
-                <TableHead>Reference</TableHead>
+                <TableHead>Request ID</TableHead>
+                <TableHead>Requester</TableHead>
+                <TableHead>Approved By</TableHead>
+                <TableHead>Issued By</TableHead>
+                <TableHead>Site Name</TableHead>
+                <TableHead>Date of Issue</TableHead>
+                <TableHead>View Items</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredTransactions.length > 0 ? (
-                filteredTransactions.map((tx, index) => (
-                  <TableRow key={index}>
+              {filteredRequests.length > 0 ? (
+                filteredRequests.map((req, idx) => (
+                  <TableRow key={req.id || idx}>
+                    <TableCell>{req.id || ''}</TableCell>
+                    <TableCell>{req.requestedByUsername || req.requestedBy || ''}</TableCell>
+                    <TableCell>{req.approver || ''}</TableCell>
+                    <TableCell>{req.issuedBy || ''}</TableCell>
+                    <TableCell>{req.siteName || ''}</TableCell>
+                    <TableCell>{req.fulfilledDate ? new Date(req.fulfilledDate).toLocaleString() : (req.approvedDate ? new Date(req.approvedDate).toLocaleString() : '')}</TableCell>
                     <TableCell>
-                      <Badge variant={tx.type === 'Issued' ? 'destructive' : 'default'} className={tx.type === 'Received' ? 'bg-green-500 text-white' : ''}>
-                        {tx.type}
-                      </Badge>
+                      <Button size="sm" variant="ghost" onClick={() => setViewItems(req.items || [])}>View</Button>
                     </TableCell>
-                    <TableCell className="font-medium">{tx.itemName}</TableCell>
-                    <TableCell className="font-mono text-sm">{tx.itemCode}</TableCell>
-                    <TableCell className="font-medium">{tx.quantity}</TableCell>
-                    <TableCell>{tx.user}</TableCell>
-                    <TableCell>{tx.timestamp}</TableCell>
-                    <TableCell className="font-mono text-sm">{tx.ref}</TableCell>
                   </TableRow>
                 ))
               ) : (
@@ -99,6 +171,30 @@ export const AuditTrail = () => {
           </Table>
         </div>
       </CardContent>
+      {/* Modal for viewing requested inventory */}
+      <Dialog open={!!viewItems} onOpenChange={() => setViewItems(null)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Requested Inventory</DialogTitle>
+          </DialogHeader>
+          {Array.isArray(viewItems) && viewItems.length > 0 ? (
+            <ul className="space-y-2">
+              {viewItems.map((item, i) => (
+                <li key={i} className="border rounded p-2">
+                  <div><span className="font-semibold">Material ID:</span> {item.materialId || item.id || ''}</div>
+                  <div><span className="font-semibold">Name:</span> {getMaterialName(item.materialId) || item.materialName || item.name || item.itemName || 'Unnamed Item'}</div>
+                  <div><span className="font-semibold">Quantity:</span> {item.quantity || item.requestedQuantity || ''}</div>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <div className="text-muted-foreground">No inventory items found for this request.</div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setViewItems(null)}>Close</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 };

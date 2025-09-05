@@ -35,8 +35,11 @@ function SiteEngineerDashboard() {
   const [metrics, setMetrics] = useState({
     totalRequests: 0,
     fulfilledRequests: 0,
-    pendingRequests: 0,
-    partialRequests: 0,
+  pendingRequests: 0,
+  partialRequests: 0,
+  submittedRequests: 0,
+  approvedRequests: 0,
+  issuedRequests: 0,
     totalStockValue: 0,
     lowStockItems: 0,
   });
@@ -92,15 +95,19 @@ function SiteEngineerDashboard() {
     const unsubRequests = onSnapshot(
       collection(db, "material_requests"),
       (snapshot) => {
-        // Only include requests for the logged-in user
-        const requests = snapshot.docs.map(doc => {
-          const d = doc.data();
-          return {
-            id: doc.id,
-            ...d
-          } as MaterialRequest;
-        }).filter(r => user && r.requestedBy && r.requestedBy === user.id);
-        setMaterialRequests(requests);
+        // Map all requests from snapshot
+        const allRequests = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as any[];
+
+        // Filter to requests made by the logged-in user only
+        const userRequests = user ? allRequests.filter(r => r.requestedBy === user.id) : [];
+
+  // Compute counts from user's requests using new statuses
+  const submittedCount = userRequests.filter(r => r.status === 'submitted').length;
+  const approvedCount = userRequests.filter(r => r.status === 'approved').length;
+  const issuedCount = userRequests.filter(r => r.status === 'issued').length;
+
+  setMetrics(prev => ({ ...prev, submittedRequests: submittedCount, approvedRequests: approvedCount, issuedRequests: issuedCount }));
+        setMaterialRequests(userRequests as MaterialRequest[]);
       }
     );
 
@@ -108,7 +115,7 @@ function SiteEngineerDashboard() {
       unsubStock();
       unsubRequests();
     };
-  }, []);
+  }, [user]);
 
   useEffect(() => {
     async function fetchMaterialRequests() {
@@ -166,10 +173,10 @@ function SiteEngineerDashboard() {
           />
           <MetricsCard
             title="Pending Requests"
-            value={metrics.totalRequests > 0 ? metrics.pendingRequests + metrics.partialRequests : "N/A"}
-            subtitle={metrics.totalRequests > 0 ? `${metrics.pendingRequests} pending, ${metrics.partialRequests} partial` : "N/A"}
+            value={metrics.totalRequests > 0 ? metrics.submittedRequests : (metrics.submittedRequests > 0 ? metrics.submittedRequests : "N/A")}
+            subtitle={`${metrics.submittedRequests} submitted, ${metrics.approvedRequests} approved, ${metrics.issuedRequests} issued`}
             icon={Clock}
-            variant={metrics.pendingRequests > 5 ? "warning" : "default"}
+            variant={metrics.submittedRequests > 5 ? "warning" : "default"}
           />
           <MetricsCard
             title="Stock Value"
@@ -205,6 +212,7 @@ function SiteEngineerDashboard() {
                       requests={materialRequests}
                       onViewDetails={setSelectedRequest}
                       variant="mobile"
+                      showActions={false}
                     />
                   </div>
                   <div className="hidden sm:block md:hidden">
@@ -213,6 +221,7 @@ function SiteEngineerDashboard() {
                       requests={materialRequests}
                       onViewDetails={setSelectedRequest}
                       variant="tablet"
+                      showActions={false}
                     />
                   </div>
                   <div className="hidden md:block">
@@ -221,6 +230,7 @@ function SiteEngineerDashboard() {
                       requests={materialRequests}
                       onViewDetails={setSelectedRequest}
                       variant="desktop"
+                      showActions={false}
                     />
                   </div>
                 </div>

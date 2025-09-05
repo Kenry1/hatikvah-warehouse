@@ -1,129 +1,13 @@
-// Material Request type and fetch function
-export interface MaterialRequest {
-  id?: string;
-  requesterId: string;
-  requestedBy?: string;
-  requestedByUsername?: string;
-  requestorRole?: string;
-  approver?: string;
-  approverRole?: string;
-  issuedBy?: string;
-  requesterRole?: string;
-  companyId: string;
-  requestDate?: any;
-  assignedTo?: string;
-  comments?: string;
-  notes?: string;
-  price?: number;
-  totalCost?: number;
-  urgency?: 'high' | 'medium' | 'low' | 'urgent';
-  priority?: 'high' | 'medium' | 'low' | 'urgent';
-  siteId?: string;
-  siteName?: string;
-  items?: any[];
-  status?: 'submitted' | 'approved' | 'issued' | 'pending' | 'fulfilled' | 'partial' | 'cancelled' | 'other';
-}
-import { db } from './firebase';
+import { db } from '@/lib/firebase';
+import { MaterialRequest, AssetRequest, ITAsset } from '@/types/inventory';
+import { LeaveRequest } from '@/types/common';
+export type { LeaveRequest } from '@/types/common';
+import { User } from '@/types/auth';
 import { collection, addDoc, getDocs, query, where, serverTimestamp, doc, deleteDoc, updateDoc } from 'firebase/firestore';
 import { Toast } from '@/components/ui/toast';
-import { User } from '@/types/auth'; // Assuming User interface is defined in auth.ts
-
-export interface LeaveRequest {
-  id?: string;
-  employeeId: string;
-  employeeName: string;
-  department: string;
-  leaveType: string;
-  startDate: string;
-  endDate: string;
-  days: number;
-  reason: string;
-  status: 'pending' | 'approved' | 'rejected';
-  companyId: string;
-  appliedDate?: any; 
-}
-
-export interface AssetRequest {
-  id?: string;
-  requesterId: string;
-  companyId: string;
-  assetType: string;
-  description: string;
-  status: 'pending' | 'approved' | 'rejected' | 'assigned';
-  requestedDate?: any;
-  assignedTo?: string;
-  comments?: string;
-}
-
-export interface ITAsset {
-  id?: string;
-  name: string;
-  type: string;
-  serialNumber: string;
-  status: string;
-  location: string;
-  assignedTo?: string;
-  purchaseDate: string;
-  warrantyEndDate?: string;
-  companyId: string;
-  createdAt?: any;
-  updatedAt?: any;
-}
-
-// Function to add a new leave request
-export const addLeaveRequest = async (requestData: Omit<LeaveRequest, 'id' | 'appliedDate'>) => {
+export const getUserList = async (): Promise<User[]> => {
   try {
-    const docRef = await addDoc(collection(db, 'leaveRequests'), {
-      ...requestData,
-      appliedDate: serverTimestamp()
-    });
-    console.log('Leave request submitted with ID: ', docRef.id);
-    return docRef.id;
-  } catch (error) {
-    console.error('Error submitting leave request: ', error);
-    throw new Error('Failed to submit leave request.');
-  }
-};
-
-// Function to get a list of leave requests for a specific user
-export const getLeaveRequestList = async (employeeId: string, companyId: string): Promise<LeaveRequest[]> => {
-  try {
-    const q = query(
-      collection(db, 'leaveRequests'),
-      where('employeeId', '==', employeeId),
-      where('companyId', '==', companyId)
-    );
-    const querySnapshot = await getDocs(q);
-    const requests: LeaveRequest[] = [];
-    querySnapshot.forEach((doc) => {
-      requests.push({ id: doc.id, ...doc.data() } as LeaveRequest);
-    });
-    return requests;
-  } catch (error) {
-    console.error('Error fetching leave requests: ', error);
-    throw new Error('Failed to fetch leave requests.');
-  }
-};
-
-// Function to delete a leave request
-export const deleteLeaveRequest = async (requestId: string) => {
-  try {
-    await deleteDoc(doc(db, 'leaveRequests', requestId));
-    console.log('Leave request deleted with ID: ', requestId);
-  } catch (error) {
-    console.error('Error deleting leave request: ', error);
-    throw new Error('Failed to delete leave request.');
-  }
-};
-
-// Function to get a list of users for a specific company
-export const getUserList = async (companyId: string): Promise<User[]> => {
-  try {
-    const q = query(
-      collection(db, 'users'),
-      where('companyId', '==', companyId)
-    );
-    const querySnapshot = await getDocs(q);
+    const querySnapshot = await getDocs(collection(db, 'users'));
     const users: User[] = [];
     querySnapshot.forEach((doc) => {
       users.push({ id: doc.id, ...doc.data() } as User);
@@ -135,6 +19,51 @@ export const getUserList = async (companyId: string): Promise<User[]> => {
   }
 };
 
+//
+// Function to add a new leave request
+export const addLeaveRequest = async (requestData: Omit<LeaveRequest, 'id' | 'appliedDate'>) => {
+  try {
+    const docRef = await addDoc(collection(db, 'leaveRequests'), {
+      ...requestData,
+      appliedDate: serverTimestamp()
+    });
+    console.log('Leave request submitted with ID: ', docRef.id);
+    return docRef.id;
+  } catch (error) {
+    console.error('Error submitting leave request:', error);
+    throw new Error('Failed to submit leave request.');
+  }
+};
+
+// Function to get a list of leave requests for a specific user within a company
+export const getLeaveRequestList = async (userId: string, companyId: string): Promise<LeaveRequest[]> => {
+  try {
+    const q = query(
+      collection(db, 'leaveRequests'),
+      where('employeeId', '==', userId),
+      where('companyId', '==', companyId)
+    );
+    const snapshot = await getDocs(q);
+    const requests: LeaveRequest[] = [];
+    snapshot.forEach((d) => {
+      requests.push({ id: d.id, ...(d.data() as LeaveRequest) });
+    });
+    return requests;
+  } catch (error) {
+    console.error('Error fetching leave requests: ', error);
+    throw new Error('Failed to fetch leave requests.');
+  }
+};
+
+// Function to delete a leave request by ID
+export const deleteLeaveRequest = async (requestId: string): Promise<void> => {
+  try {
+    await deleteDoc(doc(db, 'leaveRequests', requestId));
+  } catch (error) {
+    console.error('Error deleting leave request: ', error);
+    throw new Error('Failed to delete leave request.');
+  }
+};
 // Function to update a user's data
 export const updateUser = async (userId: string, data: Partial<User>) => {
   try {
@@ -213,7 +142,7 @@ export const getITAssetList = async (companyId: string): Promise<ITAsset[]> => {
 export const getAssetRequestList = async (companyId: string): Promise<AssetRequest[]> => {
   try {
     const q = query(
-      collection(db, 'material_requests'), // <-- updated from 'assetRequests' to 'material_requests'
+      collection(db, 'assetRequests'),
       where('companyId', '==', companyId)
     );
     const querySnapshot = await getDocs(q);
@@ -227,12 +156,16 @@ export const getAssetRequestList = async (companyId: string): Promise<AssetReque
     throw new Error('Failed to fetch asset requests.');
   }
 };
-
 // Function to get a list of material requests for a specific company
-export const getMaterialRequestList = async (companyId: string): Promise<MaterialRequest[]> => {
+export const getMaterialRequestList = async (companyId?: string): Promise<MaterialRequest[]> => {
   try {
-    const q = query(collection(db, 'material_requests'), where('companyId', '==', companyId));
-    const querySnapshot = await getDocs(q);
+    let querySnapshot;
+    if (typeof companyId === 'string' && companyId !== '') {
+      const q = query(collection(db, 'material_requests'), where('companyId', '==', companyId));
+      querySnapshot = await getDocs(q);
+    } else {
+      querySnapshot = await getDocs(collection(db, 'material_requests'));
+    }
     const requests: MaterialRequest[] = [];
     querySnapshot.forEach((doc) => {
       requests.push({ id: doc.id, ...doc.data() } as MaterialRequest);
