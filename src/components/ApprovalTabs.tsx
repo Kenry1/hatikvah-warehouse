@@ -362,8 +362,15 @@ const MaterialRequestCard = ({ request, onApprove }: { request: any, onApprove: 
                   },
                 }}
                 onApprove={async (id) => {
-                  await updateDoc(doc(db, "material_requests", id), { status: "approved" });
-                  setMaterialRequests((prev) => prev.map(r => r.id === id ? { ...r, status: "approved" } : r));
+                  // Get current user for approver info
+                  const approver = user?.username || user?.id || "";
+                  const approverRole = user?.role || "";
+                  await updateDoc(doc(db, "material_requests", id), {
+                    status: "approved",
+                    approver,
+                    approverRole
+                  });
+                  setMaterialRequests((prev) => prev.map(r => r.id === id ? { ...r, status: "approved", approver, approverRole } : r));
                 }}
               />
             ))}

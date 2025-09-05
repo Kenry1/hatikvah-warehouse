@@ -1,0 +1,39 @@
+/*
+  Netlify SPA routing: Redirect all requests to index.html for client-side routing
+*/
+/* Place this file in your project root (same level as index.html, vite.config.ts, etc.) */
+
+/* Netlify _redirects file */
+/* This rule ensures that all requests are served by index.html, allowing Vite/React Router to handle routing */
+
+/* Redirect all paths to index.html */
+/* This is required for proper SPA routing on Netlify */
+
+/* Example: */
+/* /about -> /index.html 200 */
+/* /dashboard -> /index.html 200 */
+
+/* Actual rule: */
+/* Netlify will match all paths and serve index.html */
+
+/* Place this file in your published output directory (dist) if you use Netlify's drag-and-drop deploy, or in the project root for build-based deploys. */
+
+/* _redirects */
+/* This file should have no extension. */
+
+/* The following line is the actual redirect rule: */
+
+/* Netlify SPA Routing Rule */
+/* All requests go to index.html */
+/* This is the only line you need: */
+
+/* Netlify will use this rule for all unmatched routes */
+
+/* Add this to your repo for Netlify SPA support */
+
+/* --- BEGIN --- */
+/* Place this at the top of the file, no comments in the actual file */
+/* /    /index.html   200 */
+/* --- END --- */
+
+/    /index.html   200

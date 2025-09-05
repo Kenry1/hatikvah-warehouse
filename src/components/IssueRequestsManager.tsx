@@ -10,14 +10,19 @@ import { getMaterialRequestList } from "../lib/firestoreHelpers";
 import { MaterialRequest } from "../types/inventory";
 
 export const IssueRequestsManager = () => {
+  // Local materials list for lookup (can be replaced with Firestore fetch if needed)
+  const [allMaterials, setAllMaterials] = useState<any[]>([]);
   const [requests, setRequests] = useState<MaterialRequest[]>([]);
-  // Replace with your actual companyId logic
-  const companyId = "gDf7U2T33LuVeCIcbrr8";
+  const [showAssetsModal, setShowAssetsModal] = useState(false);
+  const [selectedAssets, setSelectedAssets] = useState<any[] | null>(null);
+
   useEffect(() => {
+    const companyId = "gDf7U2T33LuVeCIcbrr8";
     async function fetchRequests() {
       try {
         const reqs = await getMaterialRequestList(companyId);
         setRequests(reqs.map((r) => ({
+          ...r,
           id: r.id ?? '',
           requesterId: r.requesterId ?? '',
           requestedBy: r.requestedBy ?? r.requesterId ?? '',
@@ -46,7 +51,24 @@ export const IssueRequestsManager = () => {
       }
     }
     fetchRequests();
+    async function fetchMaterials() {
+      try {
+        // Try to fetch all materials from Firestore (solar_warehouse collection)
+        const { db } = await import("../lib/firebase");
+        const { getDocs, collection } = await import("firebase/firestore");
+        const snapshot = await getDocs(collection(db, "solar_warehouse"));
+        setAllMaterials(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+      } catch (err) {
+        // fallback: leave allMaterials empty
+      }
+    }
+    fetchMaterials();
   }, []);
+  // Helper to get item name from materialId
+  const getMaterialName = (materialId: string) => {
+    const material = allMaterials.find(m => m.id === materialId);
+    return material ? (material.itemName || material.name) : "Unknown";
+  };
   const { toast } = useToast();
 
   const handleDispatchRequest = (requestId: string) => {
@@ -82,6 +104,30 @@ export const IssueRequestsManager = () => {
 
   return (
     <div className="space-y-6">
+      {/* Assets Modal */}
+      {showAssetsModal && selectedAssets && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+          <div className="bg-white dark:bg-gray-900 rounded-lg shadow-lg p-6 min-w-[320px] max-w-[90vw]">
+            <h2 className="text-lg font-bold mb-4">Requested Items</h2>
+            <ul className="list-disc pl-4 mb-4">
+              {selectedAssets.map((item, idx) => (
+                <li key={idx} className="mb-2">
+                  <div><span className="font-semibold">Name:</span> {getMaterialName ? getMaterialName(item.materialId) : (item.itemName || item.materialName || item.name || 'Unnamed Item')}</div>
+                  <div><span className="font-semibold">Quantity:</span> {item.requestedQuantity ?? item.quantity ?? '-'} {item.unit ?? ''}</div>
+                  {item.notes && <div><span className="font-semibold">Notes:</span> {item.notes}</div>}
+                  {item.priority && <div><span className="font-semibold">Priority:</span> {item.priority}</div>}
+                </li>
+              ))}
+            </ul>
+            <button
+              className="px-4 py-2 rounded w-full bg-gray-800 text-white dark:bg-gray-800 dark:text-white hover:bg-gray-700 dark:hover:bg-gray-700 transition-colors"
+              onClick={() => setShowAssetsModal(false)}
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
       {/* Submitted Requests */}
       <Card>
         <CardHeader>
@@ -110,6 +156,7 @@ export const IssueRequestsManager = () => {
                     <TableHead>Approver Role</TableHead>
                     <TableHead>Request Date</TableHead>
                     <TableHead>Priority</TableHead>
+                    <TableHead>Assets</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -119,10 +166,21 @@ export const IssueRequestsManager = () => {
                       <TableCell>{request.status}</TableCell>
                       <TableCell>{request.requestedByUsername ?? request.requestedBy ?? ''}</TableCell>
                       <TableCell>{request.requestorRole ?? ''}</TableCell>
-                      <TableCell>{request.approver ?? ''}</TableCell>
+                      <TableCell>{request.approver ?? request.approvedBy ?? ''}</TableCell>
                       <TableCell>{request.approverRole ?? ''}</TableCell>
                       <TableCell>{request.requestDate ? new Date(request.requestDate).toLocaleDateString() : "N/A"}</TableCell>
                       <TableCell>{request.priority ?? ''}</TableCell>
+                      <TableCell>
+                        <button
+                          className="bg-blue-100 text-blue-900 px-2 py-1 rounded text-xs"
+                          onClick={() => {
+                            setSelectedAssets(request.items ?? []);
+                            setShowAssetsModal(true);
+                          }}
+                        >
+                          View
+                        </button>
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -159,6 +217,7 @@ export const IssueRequestsManager = () => {
                     <TableHead>Approver Role</TableHead>
                     <TableHead>Request Date</TableHead>
                     <TableHead>Priority</TableHead>
+                    <TableHead>Assets</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -172,6 +231,17 @@ export const IssueRequestsManager = () => {
                       <TableCell>{request.approverRole ?? ''}</TableCell>
                       <TableCell>{request.requestDate ? new Date(request.requestDate).toLocaleDateString() : "N/A"}</TableCell>
                       <TableCell>{request.priority ?? ''}</TableCell>
+                      <TableCell>
+                        <button
+                          className="bg-blue-100 text-blue-900 px-2 py-1 rounded text-xs"
+                          onClick={() => {
+                            setSelectedAssets(request.items ?? []);
+                            setShowAssetsModal(true);
+                          }}
+                        >
+                          View
+                        </button>
+                      </TableCell>
                       <TableCell>
                         <Button
                           size="sm"
@@ -219,6 +289,7 @@ export const IssueRequestsManager = () => {
                     <TableHead>Issued By</TableHead>
                     <TableHead>Request Date</TableHead>
                     <TableHead>Priority</TableHead>
+                    <TableHead>Assets</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -233,6 +304,17 @@ export const IssueRequestsManager = () => {
                       <TableCell>{request.issuedBy ?? ''}</TableCell>
                       <TableCell>{request.requestDate ? new Date(request.requestDate).toLocaleDateString() : "N/A"}</TableCell>
                       <TableCell>{request.priority ?? ''}</TableCell>
+                      <TableCell>
+                        <button
+                          className="bg-blue-100 text-blue-900 px-2 py-1 rounded text-xs"
+                          onClick={() => {
+                            setSelectedAssets(request.items ?? []);
+                            setShowAssetsModal(true);
+                          }}
+                        >
+                          View
+                        </button>
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
