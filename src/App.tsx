@@ -20,6 +20,7 @@ import AssetInventory from "./pages/AssetInventory"; // Import AssetInventory co
 import SafetyReportsViewer from "./pages/sreportsv"; // Import the new SafetyReportsViewer component
 import { RouteGuard } from "./components/navigation/RouteGuard";
 import { DashboardLayout } from "./components/layout/DashboardLayout";
+import ProjectTrackingPage from "./pages/ProjectTrackingPage";
 
 const queryClient = new QueryClient();
 
@@ -79,6 +80,7 @@ const App = () => (
             <Route path="/settings" element={<Dashboard />} />
             <Route path="/finance-approvals" element={<Dashboard />} />
             <Route path="/warehouse-inventory" element={<Dashboard />} />
+            <Route path="/project-tracking" element={<ProjectTrackingPage />} />
             <Route path="/procurement-resources" element={<Dashboard />} />
             <Route path="/leave-management" element={<Dashboard />} />
             <Route path="/unified-approvals" element={<Dashboard />} />
