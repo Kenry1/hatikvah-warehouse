@@ -9,19 +9,7 @@ export default defineConfig(({ mode }) => ({
     port: 8080,
   },
   plugins: [
-    react(),
-    {
-      name: 'copy-redirects',
-      closeBundle() {
-        const fs = require('fs');
-        const path = require('path');
-        const src = path.resolve(__dirname, '_redirects');
-        const dest = path.resolve(__dirname, 'dist/_redirects');
-        if (fs.existsSync(src)) {
-          fs.copyFileSync(src, dest);
-        }
-      }
-    }
+    react()
   ],
   resolve: {
     alias: {
