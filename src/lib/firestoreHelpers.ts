@@ -157,20 +157,18 @@ export const getAssetRequestList = async (companyId: string): Promise<AssetReque
   }
 };
 // Function to get a list of material requests for a specific company
-export const getMaterialRequestList = async (companyId?: string): Promise<MaterialRequest[]> => {
+export const getMaterialRequestList = async (userId?: string): Promise<MaterialRequest[]> => {
   try {
-    let querySnapshot;
-    if (typeof companyId === 'string' && companyId !== '') {
-      const q = query(collection(db, 'material_requests'), where('companyId', '==', companyId));
-      querySnapshot = await getDocs(q);
+    const results: MaterialRequest[] = [];
+    if (typeof userId === 'string' && userId !== '') {
+      const q1 = query(collection(db, 'material_requests'), where('requestedBy', '==', userId));
+      const snap1 = await getDocs(q1);
+      snap1.forEach((d) => results.push({ id: d.id, ...(d.data() as any) } as MaterialRequest));
     } else {
-      querySnapshot = await getDocs(collection(db, 'material_requests'));
+      const snap = await getDocs(collection(db, 'material_requests'));
+      snap.forEach((d) => results.push({ id: d.id, ...(d.data() as any) } as MaterialRequest));
     }
-    const requests: MaterialRequest[] = [];
-    querySnapshot.forEach((doc) => {
-      requests.push({ id: doc.id, ...doc.data() } as MaterialRequest);
-    });
-    return requests;
+    return results;
   } catch (error) {
     console.error('Error fetching material requests: ', error);
     throw new Error('Failed to fetch material requests.');

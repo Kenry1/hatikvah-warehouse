@@ -21,7 +21,7 @@ interface ApprovalRecord {
   requestor: string;
 }
 
-const ApprovalRecordsTable = () => {
+const ApprovalRecordsTable = ({ fetchAll = false }: { fetchAll?: boolean }) => {
   const { user } = useAuth();
   const [records, setRecords] = useState<any[]>([]);
   const [filteredRecords, setFilteredRecords] = useState<any[]>([]);
@@ -32,13 +32,13 @@ const ApprovalRecordsTable = () => {
   const [dateTo, setDateTo] = useState("");
 
   useEffect(() => {
-    if (!user?.companyId) return;
-    getMaterialRequestList(user.companyId).then((data) => {
-      // Only show approved/rejected requests
-      const filtered = data.filter((r) => r.status === "approved" || r.status === "rejected");
+    const key = fetchAll ? undefined : user?.id;
+    getMaterialRequestList(key).then((data: any[]) => {
+      // Only show approved/rejected requests (defensive string compare)
+      const filtered = data.filter((r) => String(r.status) === "approved" || String(r.status) === "rejected");
       setRecords(filtered);
     });
-  }, [user]);
+  }, [user, fetchAll]);
 
   useEffect(() => {
     let temp = [...records];

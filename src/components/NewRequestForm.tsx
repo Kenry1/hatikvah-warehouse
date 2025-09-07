@@ -202,9 +202,9 @@ export function NewRequestForm({ open, onOpenChange }: NewRequestFormProps) {
       requestedBy: user?.id || "",
       requestedByUsername: user?.username || "",
       requestorRole: user?.role || "",
+      status: "pending" as const,
       approver: "", // to be filled when approved
       approverRole: "", // to be filled when approved
-      companyId: user?.companyId || "",
       requestDate: new Date().toISOString(),
     };
     try {

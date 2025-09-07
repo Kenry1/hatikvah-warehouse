@@ -23,7 +23,17 @@ export const AuditTrail = () => {
   const [issuedByFilter, setIssuedByFilter] = useState("all");
 
   useEffect(() => {
-    getMaterialRequestList().then(setRequests).catch(console.error);
+    (async () => {
+      try {
+        const { useAuth } = await import("@/contexts/AuthContext");
+        // eslint-disable-next-line react-hooks/rules-of-hooks
+        const { user } = useAuth();
+        const data = await getMaterialRequestList(user?.id);
+        setRequests(data);
+      } catch (e) {
+        console.error(e);
+      }
+    })();
     // load materials for name lookup
     (async function loadMaterials(){
       try{

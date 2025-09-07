@@ -129,7 +129,7 @@ interface RequestItem {
 }
 
 
-export function ApprovalTabs() {
+export function ApprovalTabs({ fetchAll = false }: { fetchAll?: boolean } = {}) {
   // Lookup for materialId to itemName
   const [allMaterials, setAllMaterials] = useState<any[]>([]);
 
@@ -145,12 +145,12 @@ export function ApprovalTabs() {
   const [materialRequests, setMaterialRequests] = useState<any[]>([]);
 
   useEffect(() => {
-    if (!user?.companyId) return;
-    getMaterialRequestList(user.companyId).then(setMaterialRequests).catch((e) => {
+    const key = fetchAll ? undefined : user?.id;
+    getMaterialRequestList(key).then(setMaterialRequests).catch((e) => {
       console.error('Error fetching material requests:', e);
       setMaterialRequests([]);
     });
-  }, [user]);
+  }, [user, fetchAll]);
 
   // Asset requests disabled; show empty for Fuel/Finance (data source restricted to material_requests)
   const fuelRequests: any[] = [];
@@ -460,7 +460,7 @@ const MaterialRequestCard = ({ request, onApprove }: { request: any, onApprove: 
         </TabsContent>
 
         <TabsContent value="records" className="mt-6">
-          <ApprovalRecordsTable />
+          <ApprovalRecordsTable fetchAll={fetchAll} />
         </TabsContent>
       </Tabs>
     </div>

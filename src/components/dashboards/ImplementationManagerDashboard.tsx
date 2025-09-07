@@ -13,21 +13,19 @@ const ImplementationManagerDashboard = () => {
   const [totalValueApproved, setTotalValueApproved] = useState(0);
 
   useEffect(() => {
-    if (!user?.companyId) return;
-    // Fetch only material requests for KPIs
-    import("@/lib/firestoreHelpers").then(m => m.getMaterialRequestList(user.companyId)).then((materialRequests) => {
+  // Fetch all material requests for KPIs
+  import("@/lib/firestoreHelpers").then(m => m.getMaterialRequestList()).then((materialRequests) => {
       const now = new Date();
       const currentMonth = now.getMonth();
       const currentYear = now.getFullYear();
       let pending = 0;
       let approvedMonth = 0;
       let totalValue = 0;
-      materialRequests.forEach((req) => {
+    materialRequests.forEach((req: any) => {
         if (req.status === "pending") pending++;
         if (req.status === "approved") {
-          let date: any = req.requestedDate?.toDate?.() || req.requestedDate;
-          if (!date && 'createdAt' in req) date = (req as any).createdAt;
-          const d = typeof date === "string" ? new Date(date) : date;
+      let date: any = req.requestDate?.toDate?.() || req.requestDate || req.createdAt;
+      const d = typeof date === "string" ? new Date(date) : (date?.toDate?.() ? date.toDate() : date);
           if (d && d.getMonth && d.getMonth() === currentMonth && d.getFullYear() === currentYear) {
             approvedMonth++;
             if ('price' in req && typeof req.price === 'number') totalValue += req.price;
@@ -80,7 +78,7 @@ const ImplementationManagerDashboard = () => {
         </div>
         {/* Approval Tabs - Main Feature */}
         <div className="w-full">
-          <ApprovalTabs />
+          <ApprovalTabs fetchAll />
         </div>
       </main>
     </div>

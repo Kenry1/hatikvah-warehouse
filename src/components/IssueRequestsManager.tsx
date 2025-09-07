@@ -12,7 +12,7 @@ import { useAuth } from "../contexts/AuthContext";
 import { db } from "../lib/firebase";
 import { doc, updateDoc, serverTimestamp } from "firebase/firestore";
 
-export const IssueRequestsManager = () => {
+export const IssueRequestsManager = ({ fetchAll = false }: { fetchAll?: boolean }) => {
   // Local materials list for lookup (can be replaced with Firestore fetch if needed)
   const [allMaterials, setAllMaterials] = useState<any[]>([]);
   const [requests, setRequests] = useState<MaterialRequest[]>([]);
@@ -22,10 +22,9 @@ export const IssueRequestsManager = () => {
   const { toast } = useToast();
 
   useEffect(() => {
-    const companyId = "gDf7U2T33LuVeCIcbrr8";
-    async function fetchRequests() {
+  async function fetchRequests() {
       try {
-        const reqs = await getMaterialRequestList(companyId);
+    const reqs = await getMaterialRequestList(fetchAll ? undefined : currentUser?.id);
         setRequests(reqs.map((r) => ({
           ...r,
           // Only include fields defined in MaterialRequest type
@@ -53,7 +52,7 @@ export const IssueRequestsManager = () => {
         console.error("Error fetching material requests:", err);
       }
     }
-    fetchRequests();
+  fetchRequests();
     async function fetchMaterials() {
       try {
         // Try to fetch all materials from Firestore (solar_warehouse collection)
@@ -66,7 +65,7 @@ export const IssueRequestsManager = () => {
       }
     }
     fetchMaterials();
-  }, []);
+  }, [fetchAll, currentUser?.id]);
   // Helper to get item name from materialId
   const getMaterialName = (materialId: string) => {
     const material = allMaterials.find(m => m.id === materialId);

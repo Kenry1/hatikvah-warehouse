@@ -149,7 +149,7 @@ export const WarehouseDashboard = () => {
           </TabsContent>
 
           <TabsContent value="requests">
-            <IssueRequestsManager />
+            <IssueRequestsManager fetchAll />
           </TabsContent>
 
           <TabsContent value="add-stock">

@@ -2,7 +2,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { Routes, Route, Outlet } from "react-router-dom";
+import { Routes, Route, Outlet, Navigate } from "react-router-dom";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import { Dashboard } from "./pages/Dashboard";
@@ -101,6 +101,10 @@ const App = () => (
             <Route path="/it-assets" element={<AssetInventory />} /> {/* New route for AssetInventory */} 
             <Route path="/sreportsv" element={<SafetyReportsViewer />} /> {/* New route for SafetyReportsViewer */} 
             <Route path="/site-docs" element={<SiteDocumentation />} />
+            {/* Handle trailing slash and common alias paths to avoid 404s */}
+            <Route path="/site-docs/*" element={<SiteDocumentation />} />
+            <Route path="/site-documentation" element={<Navigate to="/site-docs" replace />} />
+            <Route path="/site-doc" element={<Navigate to="/site-docs" replace />} />
             {/* Drive OAuth test route removed */}
       </Route>
 
