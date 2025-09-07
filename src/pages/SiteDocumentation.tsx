@@ -1,9 +1,11 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { FileText, Upload } from "lucide-react";
 import { SiteUploadForm } from "@/components/SiteUploadForm";
 import { SiteUploadsTable } from "@/components/SiteUploadsTable";
+import { saveSiteFileMeta, listSiteFiles, deleteDriveFile } from "@/services/driveData";
+import { googleOauthDrive } from "@/services/googleOauthDrive";
 
 type UploadedDoc = {
   id: string;
@@ -19,13 +21,86 @@ type UploadedDoc = {
 
 const SiteDocumentation: React.FC = () => {
   const [uploadedDocs, setUploadedDocs] = useState<UploadedDoc[]>([]);
+  const [loading, setLoading] = useState(false);
 
-  const handleUpload = (doc: UploadedDoc) => {
-    setUploadedDocs((prev) => [doc, ...prev]);
+  // Load existing documents from Firestore (all documents, ignore company id)
+  useEffect(() => {
+    (async () => {
+      setLoading(true);
+      try {
+        const files = await listSiteFiles(); // Firestore only by default
+        const mapped: UploadedDoc[] = files.map((f) => ({
+          id: f.id, // use drive file id as row id
+          title: f.name,
+          fileName: f.name,
+          siteId: f.siteId,
+          siteName: f.siteName,
+          uploadDate: f.createdTime,
+          uploader: f.uploader,
+          fileUrl: f.webViewLink,
+          driveFileId: f.id,
+        }));
+        setUploadedDocs(mapped);
+      } catch (e) {
+        console.error('Failed to load site documents from Firestore', e);
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, []);
+
+  const handleDriveRefresh = async () => {
+    // User-initiated fallback that may prompt for OAuth
+    setLoading(true);
+    try {
+      const files = await listSiteFiles({ fallbackToDrive: true, interactive: true });
+      const mapped: UploadedDoc[] = files.map((f) => ({
+        id: f.id,
+        title: f.name,
+        fileName: f.name,
+        siteId: f.siteId,
+        siteName: f.siteName,
+        uploadDate: f.createdTime,
+        uploader: f.uploader,
+        fileUrl: f.webViewLink,
+        driveFileId: f.id,
+      }));
+      setUploadedDocs(mapped);
+    } catch (e) {
+      console.error('Drive fallback refresh failed', e);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleRemove = (id: string) => {
-    setUploadedDocs((prev) => prev.filter((doc) => doc.id !== id));
+  const handleUpload = async (doc: UploadedDoc) => {
+    setUploadedDocs((prev) => [doc, ...prev]);
+    try {
+      await saveSiteFileMeta({
+        title: doc.title,
+        fileName: doc.fileName,
+        siteId: doc.siteId,
+        siteName: doc.siteName,
+        uploadDate: doc.uploadDate,
+        uploader: doc.uploader,
+        fileUrl: doc.fileUrl,
+        driveFileId: doc.driveFileId!,
+        // Try to carry user id if available from local storage Auth
+        uploadedByUserId: (JSON.parse(localStorage.getItem('currentUser') || 'null')?.id) || undefined,
+      });
+    } catch (e) {
+      console.error('Failed to save metadata to Firestore', e);
+    }
+  };
+
+  const handleRemove = async (id: string) => {
+    // id is driveFileId here
+    try {
+      await deleteDriveFile(id);
+      setUploadedDocs((prev) => prev.filter((doc) => doc.id !== id));
+    } catch (e) {
+      console.error('Failed to delete drive file', e);
+    }
   };
 
   return (
@@ -46,6 +121,14 @@ const SiteDocumentation: React.FC = () => {
               <div className="flex items-center gap-2 text-xs text-slate-500">
                 <Upload className="h-4 w-4" />
                 Upload & Manage
+                <button
+                  className="ml-4 inline-flex items-center rounded px-2 py-1 border text-xs hover:bg-slate-100 dark:hover:bg-slate-700"
+                  onClick={handleDriveRefresh}
+                  disabled={loading}
+                  title="Fetch from Drive (may require sign-in)"
+                >
+                  {loading ? 'Refreshing…' : 'Fetch from Drive'}
+                </button>
               </div>
             </div>
           </CardHeader>

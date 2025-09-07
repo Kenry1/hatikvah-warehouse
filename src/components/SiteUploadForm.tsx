@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { googleOauthDrive } from "@/services/googleOauthDrive";
+import { useAuth } from "@/contexts/AuthContext";
 
 type UploadedDoc = {
   id: string;
@@ -34,6 +35,7 @@ type Props = {
 };
 
 export const SiteUploadForm: React.FC<Props> = ({ onUpload }) => {
+  const { user } = useAuth();
   const [siteId, setSiteId] = useState("");
   const [siteName, setSiteName] = useState("");
   const [date, setDate] = useState("");
@@ -90,19 +92,19 @@ export const SiteUploadForm: React.FC<Props> = ({ onUpload }) => {
 
         // Create document object
         const doc: UploadedDoc = {
-          id: crypto.randomUUID(),
+          id: fileId, // use Drive file ID as canonical ID
           title: file.name.split(".")[0],
           fileName: file.name,
           siteId: siteId || undefined,
           siteName: siteName || undefined,
           uploadDate: new Date().toISOString(),
-          uploader: "Site Documentation System",
+          uploader: user?.username || user?.email || "Unknown",
           fileUrl: fileUrl || undefined,
           driveFileId: fileId
         };
 
         setProgress(100);
-        onUpload(doc);
+  onUpload({ ...doc, uploader: doc.uploader, driveFileId: fileId });
 
         // Reset form
         setFile(null);
@@ -116,10 +118,11 @@ export const SiteUploadForm: React.FC<Props> = ({ onUpload }) => {
       console.error("Upload failed:", error);
       // You might want to show a toast notification here
       const errorMessage = error instanceof Error ? error.message : "Upload failed. Please try again.";
-  alert(`Upload failed: ${errorMessage}`);
+      alert(`Upload failed: ${errorMessage}`);
     } finally {
       setIsUploading(false);
     }
+
   };
 
   return (

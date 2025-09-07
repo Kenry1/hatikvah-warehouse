@@ -60,19 +60,6 @@ service cloud.firestore {
       return isAuthenticated() && getUserData().data.role == 'Warehouse';
     }
 
-    // Remove unused helper functions
-    // function isProjectManager() {
-    //   return isAuthenticated() && getUserData().data.role == 'Project Manager';
-    // }
-        
-    // function isPlanning() {
-    //   return isAuthenticated() && getUserData().data.role == 'Planning';
-    // }
-
-    // function isSiteEngineer() {
-    //   return isAuthenticated() && getUserData().data.role == 'Site Engineer';
-    // }
-        
     // --- Collection-Specific Rules ---
 
     // `companies` collection rules
@@ -109,7 +96,7 @@ service cloud.firestore {
     // `users` collection rules
     match /users/{userId} {
       allow create: if isAuthenticated() &&
-                         (request.auth.uid == userId || (isICT() || isAdmin()) && isInCompany(request.resource.data.companyId)) && // Added ICT/Admin for create
+                         (request.auth.uid == userId || (isICT() || isAdmin()) && isInCompany(request.resource.data.companyId)) &&
                          request.resource.data.keys().hasAll(['username', 'email', 'role', 'companyId', 'companyName', 'createdAt']) &&
                          request.resource.data.email == request.auth.token.email &&
                          request.resource.data.role is string &&
@@ -123,7 +110,7 @@ service cloud.firestore {
       allow update: if isAuthenticated() &&
                             request.auth.uid == userId &&
                             request.resource.data.diff(resource.data).affectedKeys().hasOnly(['username', 'phoneNumber', 'avatar', 'status', 'leaveStatus']);
-      allow delete: if isAuthenticated() && (request.auth.uid == userId || (isICT() || isAdmin()) && isInCompany(resource.data.companyId)); // Allow user to delete their own account
+      allow delete: if isAuthenticated() && (request.auth.uid == userId || (isICT() || isAdmin()) && isInCompany(resource.data.companyId));
     }
 
     // `itAssets` collection rules
@@ -160,7 +147,7 @@ service cloud.firestore {
       allow delete: if isAuthenticated() && request.auth.uid == resource.data.employeeId;
     }
 
-    // `materials` collection rules (from MaterialModal.tsx)
+    // `materials` collection rules
     match /materials/{materialId} {
       allow read: if isAuthenticated();
       allow write: if isAuthenticated() &&
@@ -174,7 +161,7 @@ service cloud.firestore {
       allow write: if isAuthenticated();
     }
 
-    // `suppliers` collection rules (from ProcurementDashboard.tsx)
+    // `suppliers` collection rules
     match /suppliers/{supplierId} {
       allow read: if isAuthenticated() && isInCompany(resource.data.companyId);
       allow write: if isAuthenticated() &&
@@ -182,7 +169,7 @@ service cloud.firestore {
                            (isProcurement() || isAdmin());
     }
 
-    // `safetyReports` collection rules (from SafetyReports.tsx)
+    // `safetyReports` collection rules
     match /safetyReports/{reportId} {
       allow create: if isAuthenticated() && isInCompany(request.resource.data.companyId);
       allow read: if isAuthenticated() &&
@@ -195,7 +182,7 @@ service cloud.firestore {
       allow delete: if false;
     }
 
-    // `financeRequests` collection rules (implied from pages)
+    // `financeRequests` collection rules
     match /financeRequests/{requestId} {
       allow create: if isAuthenticated() && isInCompany(request.resource.data.companyId);
       allow read: if isAuthenticated() &&
@@ -208,7 +195,7 @@ service cloud.firestore {
       allow delete: if false;
     }
 
-    // `houseAttendance` collection rules (implied from pages)
+    // `houseAttendance` collection rules
     match /houseAttendance/{recordId} {
       allow read: if isAuthenticated() &&
                           isInCompany(resource.data.companyId) &&
@@ -218,7 +205,7 @@ service cloud.firestore {
                            (isAdmin() || isHR() || isManagement());
     }
 
-    // `ittickets` collection rules (implied from pages, includes IncomingTickets)
+    // `ittickets` collection rules
     match /ittickets/{ticketId} {
       allow create: if isAuthenticated() && isInCompany(request.resource.data.companyId);
       allow read: if isAuthenticated() &&
@@ -231,7 +218,7 @@ service cloud.firestore {
       allow delete: if false;
     }
 
-    // `vehicles` collection rules (implied from pages)
+    // `vehicles` collection rules
     match /vehicles/{vehicleId} {
       allow read: if isAuthenticated() && isInCompany(resource.data.companyId);
       allow write: if isAuthenticated() &&
@@ -241,8 +228,20 @@ service cloud.firestore {
 
     // `material_requests` collection rules
     match /material_requests/{requestId} {
-      allow read: if isAuthenticated();
-      allow write: if isAuthenticated();
+      allow read: if request.auth != null;
+      allow write: if request.auth != null;
+    }
+
+    // `site_documents` collection rules (Drive metadata)
+    match /site_documents/{docId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null && request.resource.data.driveFileId == docId;
+      allow update, delete: if request.auth != null && resource.data.driveFileId == docId;
+    }
+
+    // Default: deny everything else
+    match /{document=**} {
+      allow read, write: if false;
     }
   }
 }

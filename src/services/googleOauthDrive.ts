@@ -12,7 +12,10 @@ class GoogleOauthDriveClient {
   private token: GApiToken | null = null;
   private client: any | null = null;
 
-  init(clientId: string, scopes = 'https://www.googleapis.com/auth/drive.file') {
+  init(
+    clientId: string,
+    scopes = 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.metadata.readonly'
+  ) {
     return new Promise<void>((resolve, reject) => {
       if (!clientId) {
         reject(new Error('Missing VITE_GOOGLE_CLIENT_ID. Set it in your env and reload.'));
@@ -139,6 +142,52 @@ class GoogleOauthDriveClient {
 
   getFileUrl(fileId: string) {
     return `https://drive.google.com/file/d/${fileId}/view`;
+  }
+
+  async listFiles(options?: { query?: string; pageSize?: number; orderBy?: string }) {
+    await this.ensureToken(false);
+    const params = new URLSearchParams();
+    params.set('fields', 'files(id,name,createdTime,webViewLink,properties,description)');
+    params.set('q', options?.query || 'trashed = false');
+    params.set('orderBy', options?.orderBy || 'createdTime desc');
+    params.set('pageSize', String(options?.pageSize || 50));
+    // Only My Drive; include supportsAllDrives for safety
+    params.set('supportsAllDrives', 'true');
+    params.set('includeItemsFromAllDrives', 'false');
+
+    const url = `https://www.googleapis.com/drive/v3/files?${params.toString()}`;
+    const res = await fetch(url, {
+      headers: { Authorization: `Bearer ${this.token!.access_token}` },
+    });
+    if (!res.ok) {
+      let details: any;
+      try { details = await res.json(); } catch { details = await res.text(); }
+      throw new Error(`List files failed: ${res.status} ${JSON.stringify(details)}`);
+    }
+    const data = await res.json();
+    return (data.files || []) as Array<{
+      id: string;
+      name: string;
+      createdTime: string;
+      webViewLink?: string;
+      properties?: Record<string, string>;
+      description?: string;
+    }>;
+  }
+
+  async deleteFile(fileId: string) {
+    await this.ensureToken(false);
+    const url = `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}`;
+    const res = await fetch(url, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${this.token!.access_token}` },
+    });
+    if (!res.ok) {
+      let details: any;
+      try { details = await res.json(); } catch { details = await res.text(); }
+      throw new Error(`Delete failed: ${res.status} ${JSON.stringify(details)}`);
+    }
+    return true;
   }
 
   private fileToBase64(file: File) {
