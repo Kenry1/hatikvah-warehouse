@@ -59,20 +59,15 @@ export default defineConfig(({ mode }) => ({
         ],
       },
       manifest: {
-        name: 'Ops Flow UI',
-        short_name: 'OpsFlow',
-        description: 'Operations flow management web app',
+        name: 'swiish',
+        short_name: 'swiish',
+        description: 'swiish web app',
         theme_color: '#0f172a',
         background_color: '#ffffff',
         display: 'standalone',
         start_url: '/',
         scope: '/',
         icons: [
-          {
-            src: '/favicon.ico',
-            sizes: '64x64 32x32 24x24 16x16',
-            type: 'image/x-icon'
-          },
           {
             src: '/pwa-192x192.png',
             sizes: '192x192',
