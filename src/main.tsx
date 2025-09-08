@@ -6,6 +6,14 @@ import { AuthProvider } from './contexts/AuthContext'
 import { DataProvider } from './contexts/DataContext'
 import { ThemeProvider } from './contexts/ThemeContext'
 import { Toaster } from './components/ui/toaster'
+// Register the PWA service worker (vite-plugin-pwa) using dynamic import to satisfy TS
+if (typeof window !== 'undefined') {
+  import('virtual:pwa-register').then(({ registerSW }) => {
+    registerSW({ immediate: true })
+  }).catch(() => {
+    // no-op: during dev without plugin or type resolution issues
+  })
+}
 
 createRoot(document.getElementById("root")!).render(
   <ThemeProvider>

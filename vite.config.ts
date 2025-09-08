@@ -13,8 +13,8 @@ export default defineConfig(({ mode }) => ({
     react(),
   VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.ico', 'robots.txt', 'apple-touch-icon.png'],
-      devOptions: { enabled: false },
+      includeAssets: ['favicon.ico', 'robots.txt', 'pwa-192x192.png', 'pwa-512x512.png', 'pwa-maskable-512x512.png'],
+      devOptions: { enabled: true },
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,jpg,jpeg,woff2}'],
         navigateFallback: '/index.html',
@@ -59,7 +59,7 @@ export default defineConfig(({ mode }) => ({
           },
         ],
       },
-      manifest: {
+  manifest: {
         name: 'swiish',
         short_name: 'swiish',
         description: 'swiish web app',
