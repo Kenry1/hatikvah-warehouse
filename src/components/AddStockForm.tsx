@@ -60,20 +60,20 @@ export const AddStockForm = ({ onStockAdded }) => {
 			return;
 		}
 
-		const newStockItem = {
+			const newStockItem = {
 			...newItem,
 			quantity: parseInt(newItem.quantity, 10),
 			reorderLevel: parseInt(newItem.reorderLevel, 10) || 0,
 			unitPrice: parseFloat(newItem.unitPrice) || 0,
 			createdAt: Timestamp.now(),
-			receivingDate: new Date(),
+				receivingDate: Timestamp.now(),
 			receivedBy: user?.id || "",
 			companyId: user?.companyId || "",
 		};
 
 		try {
-			await addDoc(collection(db, "solar_warehouse"), newStockItem);
-			onStockAdded(newStockItem);
+				const docRef = await addDoc(collection(db, "solar_warehouse"), newStockItem);
+				onStockAdded({ id: docRef.id, ...newStockItem });
 			toast({
 				title: "Stock Added Successfully",
 				description: `${newItem.itemName} has been added to the inventory and synced to the database.`,

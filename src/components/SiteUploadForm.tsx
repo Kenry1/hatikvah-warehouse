@@ -77,8 +77,13 @@ export const SiteUploadForm: React.FC<Props> = ({ onUpload }) => {
       // Update progress to show upload starting
       setProgress(10);
 
+      const clientId = (import.meta as any).env?.VITE_GOOGLE_CLIENT_ID as string | undefined;
+      if (!clientId) {
+        throw new Error("Missing VITE_GOOGLE_CLIENT_ID. Set it in your env and reload.");
+      }
+
   // Upload via OAuth (user's My Drive) to avoid service account quota errors
-  await googleOauthDrive.init((import.meta as any).env?.VITE_GOOGLE_CLIENT_ID as string);
+  await googleOauthDrive.init(clientId);
   await googleOauthDrive.ensureToken(true);
   const fileId = await googleOauthDrive.uploadFile(file, file.name.split(".")[0]);
 

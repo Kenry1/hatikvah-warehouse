@@ -5,14 +5,19 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { AlertCircle, Search, Package, CheckCircle, XCircle } from "lucide-react";
-import { InventoryItem } from "../lib/mockData";
+import { InventoryItem as BaseInventoryItem } from "../lib/mockData";
+
+type InventoryItem = BaseInventoryItem & { id?: string };
+
+type InventoryRow = InventoryItem & { id?: string; availableQuantity?: number };
 
 interface InventoryOverviewProps {
-  data: InventoryItem[];
+  data: InventoryRow[];
   searchTerm: string;
   setSearchTerm: (term: string) => void;
   categoryFilter: string;
   setCategoryFilter: (category: string) => void;
+  onRestock?: (itemId: string, addQuantity: number) => Promise<void> | void;
 }
 
 export const InventoryOverview = ({ 
@@ -20,7 +25,8 @@ export const InventoryOverview = ({
   searchTerm, 
   setSearchTerm, 
   categoryFilter, 
-  setCategoryFilter 
+  setCategoryFilter,
+  onRestock,
 }: InventoryOverviewProps) => {
   const [statusFilter, setStatusFilter] = useState("all");
   const [restockQty, setRestockQty] = useState<Record<string, string>>({});
@@ -45,7 +51,7 @@ export const InventoryOverview = ({
     return matchesSearch && matchesCategory && matchesStatus;
   });
 
-  const getStockStatus = (item: InventoryItem) => {
+  const getStockStatus = (item: InventoryRow) => {
     if (item.quantity === 0) {
       return <Badge variant="destructive"><XCircle className="h-3 w-3 mr-1" />Out of Stock</Badge>;
     } else if (item.quantity <= item.reorderLevel) {
@@ -129,10 +135,15 @@ export const InventoryOverview = ({
               ) : (
                 filteredData.slice(0, 15).map((item) => {
                   const key = item.itemCode || `${item.itemName}-${item.category}-${item.unit}-${item.reorderLevel}`;
-                  const handleRestock = () => {
+                  const handleRestock = async () => {
                     const qty = parseInt(restockQty[key] || "", 10);
                     if (!isNaN(qty) && qty > 0) {
-                      item.quantity += qty;
+                      // If parent provided an onRestock handler, delegate to it for persistence
+                      if (onRestock && item.id) {
+                        await onRestock(String(item.id), qty);
+                      }
+                      // Optimistic local update for immediate UI feedback
+                      item.quantity = (Number(item.quantity) || 0) + qty;
                       setRestockQty(prev => ({ ...prev, [key]: "" }));
                     }
                   };

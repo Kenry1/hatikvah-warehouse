@@ -11,7 +11,7 @@ import { AddStockForm } from "../AddStockForm";
 import { AuditTrail } from "../AuditTrail";
 import { mockInventoryData, mockRequests } from "../../lib/mockData";
 import { db } from "../../lib/firebase";
-import { collection, getDocs } from "firebase/firestore";
+import { collection, getDocs, doc, updateDoc, increment } from "firebase/firestore";
 
 export const WarehouseDashboard = () => {
   const [inventoryData, setInventoryData] = useState([]);
@@ -32,12 +32,32 @@ export const WarehouseDashboard = () => {
   const [categoryFilter, setCategoryFilter] = useState("all");
 
   const handleStockAdded = (newItem) => {
-    const newStockItem = {
+    // newItem already contains Firestore doc id from AddStockForm
+    const withDefaults = {
       ...newItem,
-      id: `item-${Date.now()}`, // Ensure a unique ID
       itemCode: newItem.itemCode || `NEW-${Date.now()}`,
-    };
-    setInventoryData(prev => [...prev, newStockItem]);
+    } as any;
+    setInventoryData(prev => [...prev, withDefaults]);
+  };
+
+  // Persist restock to Firestore and update local state
+  const handleRestock = async (itemId: string, addQuantity: number) => {
+    try {
+      const ref = doc(db, "solar_warehouse", itemId);
+      // Attempt to increment both availableQuantity and quantity for compatibility
+      await updateDoc(ref, {
+        availableQuantity: increment(addQuantity),
+        quantity: increment(addQuantity),
+      });
+      // Local state update
+      setInventoryData(prev => prev.map((it: any) =>
+        String(it.id) === String(itemId)
+          ? { ...it, quantity: (Number(it.quantity) || 0) + addQuantity, availableQuantity: (Number((it as any).availableQuantity) || Number(it.quantity) || 0) + addQuantity }
+          : it
+      ));
+    } catch (err) {
+      console.error("Error updating stock in Firestore:", err);
+    }
   };
 
   // Calculate dashboard metrics
@@ -145,6 +165,7 @@ export const WarehouseDashboard = () => {
               setSearchTerm={setSearchTerm}
               categoryFilter={categoryFilter}
               setCategoryFilter={setCategoryFilter}
+              onRestock={handleRestock}
             />
           </TabsContent>
 
