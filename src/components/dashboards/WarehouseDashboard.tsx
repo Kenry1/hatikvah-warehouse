@@ -11,19 +11,26 @@ import { AddStockForm } from "../AddStockForm";
 import { AuditTrail } from "../AuditTrail";
 import { mockInventoryData, mockRequests } from "../../lib/mockData";
 import { db } from "../../lib/firebase";
-import { collection, getDocs, doc, updateDoc, increment, query, orderBy } from "firebase/firestore";
+import { collection, getDocs, doc, updateDoc, increment, query, orderBy, limit, startAfter, DocumentSnapshot } from "firebase/firestore";
 
 export const WarehouseDashboard = () => {
-  const [inventoryData, setInventoryData] = useState([]);
+  const [inventoryData, setInventoryData] = useState<any[]>([]);
+  const PAGE_SIZE = 25;
+  const [lastDoc, setLastDoc] = useState<DocumentSnapshot | null>(null);
+  const [hasMore, setHasMore] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   // Fetch inventory from Firestore solar_warehouse collection
   useEffect(() => {
   async function fetchInventory() {
       try {
-    // Order by createdAt desc so recently added stock appears first
-    const q = query(collection(db, "solar_warehouse"), orderBy("createdAt", "desc"));
+    // Initial page ordered by createdAt desc
+    const q = query(collection(db, "solar_warehouse"), orderBy("createdAt", "desc"), limit(PAGE_SIZE));
     const snapshot = await getDocs(q);
-        const items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        const items = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
         setInventoryData(items);
+        const last = snapshot.docs[snapshot.docs.length - 1] || null;
+        setLastDoc(last);
+        setHasMore(snapshot.size === PAGE_SIZE);
       } catch (err) {
         console.error("Error fetching inventory:", err);
       }
@@ -32,6 +39,29 @@ export const WarehouseDashboard = () => {
   }, []);
   const [searchTerm, setSearchTerm] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("all");
+
+  const loadMore = async () => {
+    if (!hasMore || loadingMore || !lastDoc) return;
+    setLoadingMore(true);
+    try {
+      const q = query(
+        collection(db, "solar_warehouse"),
+        orderBy("createdAt", "desc"),
+        startAfter(lastDoc),
+        limit(PAGE_SIZE)
+      );
+      const snapshot = await getDocs(q);
+      const items = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+      setInventoryData(prev => [...prev, ...items]);
+      const last = snapshot.docs[snapshot.docs.length - 1] || null;
+      setLastDoc(last);
+      setHasMore(snapshot.size === PAGE_SIZE);
+    } catch (err) {
+      console.error("Error loading more inventory:", err);
+    } finally {
+      setLoadingMore(false);
+    }
+  };
 
   const handleStockAdded = (newItem) => {
     // newItem already contains Firestore doc id from AddStockForm
@@ -168,6 +198,9 @@ export const WarehouseDashboard = () => {
               categoryFilter={categoryFilter}
               setCategoryFilter={setCategoryFilter}
               onRestock={handleRestock}
+              onLoadMore={loadMore}
+              hasMore={hasMore}
+              loadingMore={loadingMore}
             />
           </TabsContent>
 

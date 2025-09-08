@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -18,6 +18,9 @@ interface InventoryOverviewProps {
   categoryFilter: string;
   setCategoryFilter: (category: string) => void;
   onRestock?: (itemId: string, addQuantity: number) => Promise<void> | void;
+  onLoadMore?: () => Promise<void> | void;
+  hasMore?: boolean;
+  loadingMore?: boolean;
 }
 
 export const InventoryOverview = ({ 
@@ -27,9 +30,28 @@ export const InventoryOverview = ({
   categoryFilter, 
   setCategoryFilter,
   onRestock,
+  onLoadMore,
+  hasMore = false,
+  loadingMore = false,
 }: InventoryOverviewProps) => {
   const [statusFilter, setStatusFilter] = useState("all");
   const [restockQty, setRestockQty] = useState<Record<string, string>>({});
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
+
+  // Infinite scroll: observe sentinel and call onLoadMore when visible
+  useEffect(() => {
+    if (!onLoadMore || !hasMore) return;
+    const el = sentinelRef.current;
+    if (!el) return;
+    const io = new IntersectionObserver((entries) => {
+      const first = entries[0];
+      if (first.isIntersecting && hasMore && !loadingMore) {
+        onLoadMore();
+      }
+    });
+    io.observe(el);
+    return () => io.disconnect();
+  }, [onLoadMore, hasMore, loadingMore]);
 
   // Filter data based on search and filters
   const filteredData = data.filter(item => {
@@ -183,6 +205,21 @@ export const InventoryOverview = ({
             </TableBody>
           </Table>
         </div>
+
+        {/* Infinite scroll sentinel and fallback button */}
+        {(onLoadMore && hasMore) && (
+          <div className="flex flex-col items-center gap-3 mt-4">
+            <div ref={sentinelRef} className="h-2 w-full" />
+            <button
+              type="button"
+              onClick={() => onLoadMore?.()}
+              disabled={loadingMore}
+              className="px-3 py-2 rounded border text-sm"
+            >
+              {loadingMore ? 'Loading…' : 'Load more'}
+            </button>
+          </div>
+        )}
         
         <div className="mt-4 text-sm text-muted-foreground">
           Showing {filteredData.length} of {data.length} items.
