@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useTheme } from 'next-themes';
 import {
   Dialog,
@@ -28,6 +28,17 @@ import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
+import { auth as firebaseAuth, db, storage } from '@/lib/firebase';
+import { 
+  sendPasswordResetEmail,
+  updateEmail as fbUpdateEmail,
+  updatePassword as fbUpdatePassword,
+  reauthenticateWithCredential,
+  EmailAuthProvider,
+  deleteUser
+} from 'firebase/auth';
+import { doc, getDoc, updateDoc, setDoc } from 'firebase/firestore';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { Moon, Sun, Key, Trash2, Loader2, Mail, User, Upload, Shield, Smartphone } from 'lucide-react';
 
 interface ProfileSettingsModalProps {
@@ -38,7 +49,7 @@ interface ProfileSettingsModalProps {
 export function ProfileSettingsModal({ open, onOpenChange }: ProfileSettingsModalProps) {
   const { theme, setTheme } = useTheme();
   const { toast } = useToast();
-  const { user } = useAuth();
+  const { user, auth } = useAuth();
   
   // Loading states
   const [isResettingPassword, setIsResettingPassword] = useState(false);
@@ -60,6 +71,30 @@ export function ProfileSettingsModal({ open, onOpenChange }: ProfileSettingsModa
   const [phoneNumber, setPhoneNumber] = useState(user?.phoneNumber || '');
   const [twoFactorEnabled, setTwoFactorEnabled] = useState(false);
 
+  // Load full profile from Firestore when modal opens
+  useEffect(() => {
+    const loadProfile = async () => {
+      if (!open || !user?.id) return;
+      try {
+        const userRef = doc(db, 'users', user.id);
+        const snap = await getDoc(userRef);
+        if (snap.exists()) {
+          const data = snap.data() as any;
+          setUsername(data.username || user.username || '');
+          setNewEmail(data.email || user.email || '');
+          setPhoneNumber(data.phoneNumber || '');
+          setBio(data.bio || '');
+          setDateOfBirth(data.dateOfBirth || '');
+          setTwoFactorEnabled(Boolean(data.twoFactorEnabled));
+        }
+      } catch (e) {
+        console.error('Failed to load profile', e);
+      }
+    };
+    loadProfile();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
+
   const isDarkMode = theme === 'dark';
 
   const handleThemeToggle = (checked: boolean) => {
@@ -73,20 +108,13 @@ export function ProfileSettingsModal({ open, onOpenChange }: ProfileSettingsModa
   const handleResetPassword = async () => {
     setIsResettingPassword(true);
     try {
-      const response = await fetch('/api/user/request-password-reset', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (response.ok) {
+      if (!user?.email) throw new Error('No email on profile');
+      await sendPasswordResetEmail(auth || firebaseAuth, user.email);
+      {
         toast({
           title: 'Password Reset Sent',
           description: 'Check your email for password reset instructions',
         });
-      } else {
-        throw new Error('Failed to send password reset');
       }
     } catch (error) {
       toast({
@@ -111,29 +139,29 @@ export function ProfileSettingsModal({ open, onOpenChange }: ProfileSettingsModa
 
     setIsUpdatingEmail(true);
     try {
-      const response = await fetch('/api/user/update-email', {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ email: newEmail }),
-      });
-
-      if (response.ok) {
+      const cu = (auth || firebaseAuth).currentUser;
+      if (!cu) throw new Error('Not authenticated');
+      await fbUpdateEmail(cu, newEmail);
+      if (user?.id) {
+        await updateDoc(doc(db, 'users', user.id), { email: newEmail });
+      }
+      {
         toast({
           title: 'Email Updated',
           description: 'Your email address has been updated successfully',
         });
         setEmailConfirmation('');
-      } else {
-        throw new Error('Failed to update email');
       }
     } catch (error) {
+      if (error?.code === 'auth/requires-recent-login') {
+        toast({ title: 'Re-authentication required', description: 'Please log out and back in, then try again.', variant: 'destructive' });
+      } else {
       toast({
         title: 'Error',
         description: 'Failed to update email. Please try again.',
         variant: 'destructive',
       });
+      }
     } finally {
       setIsUpdatingEmail(false);
     }
@@ -151,18 +179,12 @@ export function ProfileSettingsModal({ open, onOpenChange }: ProfileSettingsModa
 
     setIsUpdatingPassword(true);
     try {
-      const response = await fetch('/api/user/change-password', {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          currentPassword,
-          newPassword,
-        }),
-      });
-
-      if (response.ok) {
+      const cu = (auth || firebaseAuth).currentUser;
+      if (!cu || !cu.email) throw new Error('Not authenticated');
+      const cred = EmailAuthProvider.credential(cu.email, currentPassword);
+      await reauthenticateWithCredential(cu, cred);
+      await fbUpdatePassword(cu, newPassword);
+      {
         toast({
           title: 'Password Updated',
           description: 'Your password has been changed successfully',
@@ -170,8 +192,6 @@ export function ProfileSettingsModal({ open, onOpenChange }: ProfileSettingsModa
         setCurrentPassword('');
         setNewPassword('');
         setConfirmPassword('');
-      } else {
-        throw new Error('Failed to change password');
       }
     } catch (error) {
       toast({
@@ -187,26 +207,24 @@ export function ProfileSettingsModal({ open, onOpenChange }: ProfileSettingsModa
   const handleUpdateProfile = async () => {
     setIsUpdatingProfile(true);
     try {
-      const response = await fetch('/api/user/update-profile', {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          username,
-          bio,
-          dateOfBirth,
-          phoneNumber,
-        }),
+      if (!user?.id) throw new Error('Not authenticated');
+      await updateDoc(doc(db, 'users', user.id), {
+        username,
+        bio,
+        dateOfBirth,
+        phoneNumber,
       });
-
-      if (response.ok) {
+      // Update local cache for immediate feedback
+      const current = localStorage.getItem('currentUser');
+      if (current) {
+        const cu = JSON.parse(current);
+        localStorage.setItem('currentUser', JSON.stringify({ ...cu, username, phoneNumber }));
+      }
+      {
         toast({
           title: 'Profile Updated',
           description: 'Your profile has been updated successfully',
         });
-      } else {
-        throw new Error('Failed to update profile');
       }
     } catch (error) {
       toast({
@@ -222,21 +240,16 @@ export function ProfileSettingsModal({ open, onOpenChange }: ProfileSettingsModa
   const handleAvatarUpload = async (file: File) => {
     setIsUploadingAvatar(true);
     try {
-      const formData = new FormData();
-      formData.append('avatar', file);
-
-      const response = await fetch('/api/user/upload-avatar', {
-        method: 'POST',
-        body: formData,
-      });
-
-      if (response.ok) {
+      if (!user?.id) throw new Error('Not authenticated');
+      const avatarRef = ref(storage, `avatars/${user.id}`);
+      await uploadBytes(avatarRef, file);
+      const url = await getDownloadURL(avatarRef);
+      await updateDoc(doc(db, 'users', user.id), { photoURL: url });
+      {
         toast({
           title: 'Avatar Updated',
           description: 'Your profile picture has been updated successfully',
         });
-      } else {
-        throw new Error('Failed to upload avatar');
       }
     } catch (error) {
       toast({
@@ -251,23 +264,13 @@ export function ProfileSettingsModal({ open, onOpenChange }: ProfileSettingsModa
 
   const handleTwoFactorToggle = async (enabled: boolean) => {
     try {
-      const response = await fetch('/api/user/toggle-2fa', {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ enabled }),
+      if (!user?.id) throw new Error('Not authenticated');
+      await updateDoc(doc(db, 'users', user.id), { twoFactorEnabled: enabled });
+      setTwoFactorEnabled(enabled);
+      toast({
+        title: '2FA Updated',
+        description: `Two-factor authentication has been ${enabled ? 'enabled' : 'disabled'}`,
       });
-
-      if (response.ok) {
-        setTwoFactorEnabled(enabled);
-        toast({
-          title: '2FA Updated',
-          description: `Two-factor authentication has been ${enabled ? 'enabled' : 'disabled'}`,
-        });
-      } else {
-        throw new Error('Failed to toggle 2FA');
-      }
     } catch (error) {
       toast({
         title: 'Error',
@@ -280,22 +283,19 @@ export function ProfileSettingsModal({ open, onOpenChange }: ProfileSettingsModa
   const handleDeleteAccount = async () => {
     setIsDeletingAccount(true);
     try {
-      const response = await fetch('/api/user/delete-account', {
-        method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (response.ok) {
+      const cu = (auth || firebaseAuth).currentUser;
+      if (!cu) throw new Error('Not authenticated');
+      if (user?.id) {
+        // Optionally mark user as deleted in Firestore; actual delete may require admin privileges
+        await updateDoc(doc(db, 'users', user.id), { status: 'deleted' });
+      }
+      await deleteUser(cu);
+      {
         toast({
           title: 'Account Deleted',
           description: 'Your account has been successfully deleted',
         });
         onOpenChange(false);
-        // In a real app, you would redirect to login or homepage
-      } else {
-        throw new Error('Failed to delete account');
       }
     } catch (error) {
       toast({
