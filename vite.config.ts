@@ -11,7 +11,7 @@ export default defineConfig(({ mode }) => ({
   },
   plugins: [
     react(),
-    VitePWA({
+  VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'robots.txt', 'apple-touch-icon.png'],
       devOptions: { enabled: false },
@@ -19,6 +19,7 @@ export default defineConfig(({ mode }) => ({
         globPatterns: ['**/*.{js,css,html,ico,png,svg,jpg,jpeg,woff2}'],
         navigateFallback: '/index.html',
         navigateFallbackDenylist: [/^\/api\//],
+    maximumFileSizeToCacheInBytes: 5 * 1024 * 1024, // allow up to 5MB assets in precache
         runtimeCaching: [
           // Google Fonts stylesheets
           {
@@ -91,6 +92,23 @@ export default defineConfig(({ mode }) => ({
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
+    },
+  },
+  build: {
+    chunkSizeWarningLimit: 3000,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          firebase: [
+            'firebase/app',
+            'firebase/auth',
+            'firebase/firestore',
+            'firebase/storage'
+          ],
+          jspdf: ['jspdf'],
+          html2canvas: ['html2canvas'],
+        },
+      },
     },
   },
 }));
