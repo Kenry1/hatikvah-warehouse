@@ -11,15 +11,17 @@ import { AddStockForm } from "../AddStockForm";
 import { AuditTrail } from "../AuditTrail";
 import { mockInventoryData, mockRequests } from "../../lib/mockData";
 import { db } from "../../lib/firebase";
-import { collection, getDocs, doc, updateDoc, increment } from "firebase/firestore";
+import { collection, getDocs, doc, updateDoc, increment, query, orderBy } from "firebase/firestore";
 
 export const WarehouseDashboard = () => {
   const [inventoryData, setInventoryData] = useState([]);
   // Fetch inventory from Firestore solar_warehouse collection
   useEffect(() => {
-    async function fetchInventory() {
+  async function fetchInventory() {
       try {
-        const snapshot = await getDocs(collection(db, "solar_warehouse"));
+    // Order by createdAt desc so recently added stock appears first
+    const q = query(collection(db, "solar_warehouse"), orderBy("createdAt", "desc"));
+    const snapshot = await getDocs(q);
         const items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         setInventoryData(items);
       } catch (err) {

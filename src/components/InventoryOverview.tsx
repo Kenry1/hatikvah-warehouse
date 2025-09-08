@@ -133,7 +133,7 @@ export const InventoryOverview = ({
                   </TableCell>
                 </TableRow>
               ) : (
-                filteredData.slice(0, 15).map((item) => {
+                filteredData.map((item) => {
                   const key = item.itemCode || `${item.itemName}-${item.category}-${item.unit}-${item.reorderLevel}`;
                   const handleRestock = async () => {
                     const qty = parseInt(restockQty[key] || "", 10);
