@@ -98,8 +98,8 @@ function SiteEngineerDashboard() {
         // Map all requests from snapshot
         const allRequests = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as any[];
 
-        // Filter to requests made by the logged-in user only
-        const userRequests = user ? allRequests.filter(r => r.requestedBy === user.id) : [];
+        // Filter to requests made by the logged-in user only and ensure status is a non-empty string
+        const userRequests = user ? allRequests.filter(r => r.requestedBy === user.id && typeof r.status === 'string' && r.status.trim() !== '') : [];
 
   // Compute counts from user's requests using new statuses
   const submittedCount = userRequests.filter(r => r.status === 'submitted').length;
@@ -123,14 +123,29 @@ function SiteEngineerDashboard() {
       try {
         const q = query(collection(db, "material_requests"), where("requestedBy", "==", user.id));
         const snapshot = await getDocs(q);
-        const requests = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        setMaterialRequests(requests);
+        const requests = snapshot.docs
+          .map(doc => ({ id: doc.id, ...doc.data() }))
+          .filter(r => typeof (r as any).status === 'string' && (r as any).status.trim() !== '');
+        setMaterialRequests(requests as any[]);
       } catch (err) {
         console.error("Error fetching material requests from Firestore:", err);
       }
     }
     fetchMaterialRequests();
   }, [user]);
+
+  // Compute month-to-date new requests (using requestDate or createdAt fallback)
+  const monthNewRequests = (() => {
+    const now = new Date();
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    return materialRequests.filter((r: any) => {
+      const dRaw = r.requestDate || r.requestedDate || r.createdAt;
+      if (!dRaw) return false;
+      const d = new Date(dRaw);
+      if (isNaN(d.getTime())) return false;
+      return d >= monthStart;
+    }).length;
+  })();
 
   return (
     <div className="min-h-screen bg-background">
@@ -163,21 +178,36 @@ function SiteEngineerDashboard() {
             icon={Package}
             trend={{ value: metrics.totalRequests > 0 ? `+${metrics.totalRequests} this month` : "", positive: true }}
           />
-          <MetricsCard
-            title="Fulfillment Rate"
-            value={metrics.totalRequests > 0 ? `${Math.round((metrics.fulfilledRequests / metrics.totalRequests) * 100)}%` : "N/A"}
-            subtitle={metrics.totalRequests > 0 ? `${metrics.fulfilledRequests} of ${metrics.totalRequests} fulfilled` : "N/A"}
-            icon={CheckCircle}
-            variant="success"
-            trend={{ value: metrics.fulfilledRequests > 0 ? "+5.2% improvement" : "", positive: true }}
-          />
-          <MetricsCard
-            title="Pending Requests"
-            value={metrics.totalRequests > 0 ? metrics.submittedRequests : (metrics.submittedRequests > 0 ? metrics.submittedRequests : "N/A")}
-            subtitle={`${metrics.submittedRequests} submitted, ${metrics.approvedRequests} approved, ${metrics.issuedRequests} issued`}
-            icon={Clock}
-            variant={metrics.submittedRequests > 5 ? "warning" : "default"}
-          />
+          {(() => {
+            const issuedCount = materialRequests.filter((r: any) => r.status === 'issued').length;
+            const progressTotal = materialRequests.filter((r: any) => ['submitted','approved','issued'].includes(r.status)).length;
+            const rate = progressTotal > 0 ? Math.round((issuedCount / progressTotal) * 100) : null;
+            return (
+              <MetricsCard
+                title="Fulfillment Rate"
+                value={rate !== null ? `${rate}%` : 'N/A'}
+                subtitle={progressTotal > 0 ? `${issuedCount} issued of ${progressTotal} active` : 'No active requests'}
+                icon={CheckCircle}
+                variant={rate !== null && rate >= 60 ? 'success' : 'default'}
+                trend={{ value: issuedCount > 0 ? `+${issuedCount} issued` : '', positive: true }}
+              />
+            );
+          })()}
+          {(() => {
+            const pendingCount = (metrics.submittedRequests || 0) + (metrics.approvedRequests || 0);
+            const issuedCount = metrics.issuedRequests || 0;
+            const subtitle = `${pendingCount} pending (S:${metrics.submittedRequests || 0} + A:${metrics.approvedRequests || 0}) vs ${issuedCount} issued`;
+            return (
+              <MetricsCard
+                title="Pending Requests"
+                value={pendingCount > 0 ? pendingCount : (pendingCount === 0 ? 0 : 'N/A')}
+                subtitle={subtitle}
+                icon={Clock}
+                variant={pendingCount > issuedCount ? 'warning' : 'default'}
+                trend={{ value: issuedCount > 0 ? `${issuedCount} issued` : '', positive: issuedCount > 0 }}
+              />
+            );
+          })()}
           <MetricsCard
             title="Stock Value"
             value={metrics.totalStockValue > 0 ? `KSh ${Math.round(metrics.totalStockValue / 1000)}K` : "N/A"}
@@ -205,35 +235,144 @@ function SiteEngineerDashboard() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="overflow-x-auto w-full">
-                  <div className="block sm:hidden">
-                    {/* Mobile: show compact table or cards */}
-                    <RequestsTable 
-                      requests={materialRequests}
-                      onViewDetails={setSelectedRequest}
-                      variant="mobile"
-                      showActions={false}
-                    />
-                  </div>
-                  <div className="hidden sm:block md:hidden">
-                    {/* Tablet: show medium table */}
-                    <RequestsTable 
-                      requests={materialRequests}
-                      onViewDetails={setSelectedRequest}
-                      variant="tablet"
-                      showActions={false}
-                    />
-                  </div>
-                  <div className="hidden md:block">
-                    {/* Desktop: show full table */}
-                    <RequestsTable 
-                      requests={materialRequests}
-                      onViewDetails={setSelectedRequest}
-                      variant="desktop"
-                      showActions={false}
-                    />
-                  </div>
-                </div>
+                {/* Status Tabs */}
+                <Tabs defaultValue="all" className="space-y-4">
+                  <TabsList className="grid grid-cols-2 sm:inline-flex w-full sm:w-auto">
+                    <TabsTrigger value="all" className="text-xs sm:text-sm">All</TabsTrigger>
+                    <TabsTrigger value="submitted" className="text-xs sm:text-sm">Submitted ({metrics.submittedRequests})</TabsTrigger>
+                    <TabsTrigger value="approved" className="text-xs sm:text-sm">Approved ({metrics.approvedRequests})</TabsTrigger>
+                    <TabsTrigger value="issued" className="text-xs sm:text-sm">Issued ({metrics.issuedRequests})</TabsTrigger>
+                  </TabsList>
+
+                  {/* All */}
+                  <TabsContent value="all" className="space-y-2">
+                    <div className="overflow-x-auto w-full">
+                      <div className="block sm:hidden">
+                        <RequestsTable 
+                          requests={materialRequests}
+                          onViewDetails={setSelectedRequest}
+                          variant="mobile"
+                          showActions={false}
+                        />
+                      </div>
+                      <div className="hidden sm:block md:hidden">
+                        <RequestsTable 
+                          requests={materialRequests}
+                          onViewDetails={setSelectedRequest}
+                          variant="tablet"
+                          showActions={false}
+                        />
+                      </div>
+                      <div className="hidden md:block">
+                        <RequestsTable 
+                          requests={materialRequests}
+                          onViewDetails={setSelectedRequest}
+                          variant="desktop"
+                          showActions={false}
+                        />
+                      </div>
+                    </div>
+                  </TabsContent>
+
+                  {/* Submitted */}
+                  <TabsContent value="submitted" className="space-y-2">
+                    <div className="overflow-x-auto w-full">
+                      <div className="block sm:hidden">
+                        <RequestsTable 
+                          requests={materialRequests}
+                          onViewDetails={setSelectedRequest}
+                          variant="mobile"
+                          showActions={false}
+                          statusScope="submitted"
+                        />
+                      </div>
+                      <div className="hidden sm:block md:hidden">
+                        <RequestsTable 
+                          requests={materialRequests}
+                          onViewDetails={setSelectedRequest}
+                          variant="tablet"
+                          showActions={false}
+                          statusScope="submitted"
+                        />
+                      </div>
+                      <div className="hidden md:block">
+                        <RequestsTable 
+                          requests={materialRequests}
+                          onViewDetails={setSelectedRequest}
+                          variant="desktop"
+                          showActions={false}
+                          statusScope="submitted"
+                        />
+                      </div>
+                    </div>
+                  </TabsContent>
+
+                  {/* Approved */}
+                  <TabsContent value="approved" className="space-y-2">
+                    <div className="overflow-x-auto w-full">
+                      <div className="block sm:hidden">
+                        <RequestsTable 
+                          requests={materialRequests}
+                          onViewDetails={setSelectedRequest}
+                          variant="mobile"
+                          showActions={false}
+                          statusScope="approved"
+                        />
+                      </div>
+                      <div className="hidden sm:block md:hidden">
+                        <RequestsTable 
+                          requests={materialRequests}
+                          onViewDetails={setSelectedRequest}
+                          variant="tablet"
+                          showActions={false}
+                          statusScope="approved"
+                        />
+                      </div>
+                      <div className="hidden md:block">
+                        <RequestsTable 
+                          requests={materialRequests}
+                          onViewDetails={setSelectedRequest}
+                          variant="desktop"
+                          showActions={false}
+                          statusScope="approved"
+                        />
+                      </div>
+                    </div>
+                  </TabsContent>
+
+                  {/* Issued */}
+                  <TabsContent value="issued" className="space-y-2">
+                    <div className="overflow-x-auto w-full">
+                      <div className="block sm:hidden">
+                        <RequestsTable 
+                          requests={materialRequests}
+                          onViewDetails={setSelectedRequest}
+                          variant="mobile"
+                          showActions={false}
+                          statusScope="issued"
+                        />
+                      </div>
+                      <div className="hidden sm:block md:hidden">
+                        <RequestsTable 
+                          requests={materialRequests}
+                          onViewDetails={setSelectedRequest}
+                          variant="tablet"
+                          showActions={false}
+                          statusScope="issued"
+                        />
+                      </div>
+                      <div className="hidden md:block">
+                        <RequestsTable 
+                          requests={materialRequests}
+                          onViewDetails={setSelectedRequest}
+                          variant="desktop"
+                          showActions={false}
+                          statusScope="issued"
+                        />
+                      </div>
+                    </div>
+                  </TabsContent>
+                </Tabs>
               </CardContent>
             </Card>
           </TabsContent>
@@ -307,7 +446,22 @@ function SiteEngineerDashboard() {
           </TabsContent>
 
           <TabsContent value="analytics" className="space-y-6">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Package className="h-5 w-5" />
+                    Total Requests
+                  </CardTitle>
+                  <CardDescription>All time</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-3xl font-bold tracking-tight">{metrics.totalRequests}</div>
+                  <p className="text-sm mt-2 {monthNewRequests > 0 ? 'text-success' : 'text-muted-foreground'}">
+                    {monthNewRequests > 0 ? `+${monthNewRequests} this month` : 'No new requests this month'}
+                  </p>
+                </CardContent>
+              </Card>
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">

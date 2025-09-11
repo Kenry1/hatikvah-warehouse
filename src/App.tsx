@@ -100,11 +100,13 @@ const App = () => (
             <Route path="/incoming-tickets" element={<IncomingTickets />} /> 
             <Route path="/it-assets" element={<AssetInventory />} /> {/* New route for AssetInventory */} 
             <Route path="/sreportsv" element={<SafetyReportsViewer />} /> {/* New route for SafetyReportsViewer */} 
-            <Route path="/site-docs" element={<SiteDocumentation />} />
-            {/* Handle trailing slash and common alias paths to avoid 404s */}
-            <Route path="/site-docs/*" element={<SiteDocumentation />} />
-            <Route path="/site-documentation" element={<Navigate to="/site-docs" replace />} />
-            <Route path="/site-doc" element={<Navigate to="/site-docs" replace />} />
+            {/* Site Documentation canonical route */}
+            <Route path="/site-documentation" element={<SiteDocumentation />} />
+            <Route path="/site-documentation/*" element={<SiteDocumentation />} />
+            {/* Legacy / short aliases redirect to canonical */}
+            <Route path="/site-docs" element={<Navigate to="/site-documentation" replace />} />
+            <Route path="/site-docs/*" element={<Navigate to="/site-documentation" replace />} />
+            <Route path="/site-doc" element={<Navigate to="/site-documentation" replace />} />
             {/* Drive OAuth test route removed */}
       </Route>
 

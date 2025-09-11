@@ -44,6 +44,7 @@ const routeLabels: Record<string, string> = {
   '/supplier-management': 'Supplier Management',
   '/supply-rates': 'Supply Rates',
   '/reorder-alerts': 'Reorder Alerts',
+  '/site-documentation': 'Site Documentation',
 };
 
 export function BreadcrumbNav() {
@@ -60,7 +61,9 @@ export function BreadcrumbNav() {
 
     // Add current page if not dashboard
     if (location.pathname !== '/dashboard' && location.pathname !== '/') {
-      const currentLabel = routeLabels[location.pathname] || 'Page';
+      const currentLabel = routeLabels[location.pathname] ||
+        // Derive a readable label from last path segment if not mapped
+        location.pathname.split('/').filter(Boolean).slice(-1)[0]?.replace(/[-_]/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) || 'Page';
       breadcrumbs.push({ label: currentLabel, path: location.pathname });
     }
 

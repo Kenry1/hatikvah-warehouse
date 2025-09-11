@@ -33,9 +33,11 @@ interface RequestsTableProps {
   companyId?: string;
   variant?: 'desktop' | 'tablet' | 'mobile';
   showActions?: boolean;
+  /** Optional external status scope (e.g. 'submitted' | 'approved' | 'issued'). When provided, overrides internal status filter selection. */
+  statusScope?: string;
 }
 
-export function RequestsTable({ requests, onViewDetails, onDispatch, companyId, variant = 'desktop', showActions = true }: RequestsTableProps) {
+export function RequestsTable({ requests, onViewDetails, onDispatch, companyId, variant = 'desktop', showActions = true, statusScope }: RequestsTableProps) {
   const [userList, setUserList] = useState<User[]>([]);
   const { user: currentUser } = useAuth();
   const { toast } = useToast();
@@ -110,14 +112,22 @@ export function RequestsTable({ requests, onViewDetails, onDispatch, companyId, 
     return true;
   };
 
-  const filteredRequests = requests.filter(request => {
-    if (siteFilter !== "all" && request.siteName !== siteFilter) return false;
-    // For 'all' status, show all requests by the user
-    if (statusFilter !== "all" && request.status !== statusFilter) return false;
-    const rd = parseRequestDate(request);
-    if (!withinDateRange(rd)) return false;
-    return true;
-  });
+  const filteredRequests = requests
+    .filter(request => {
+      if (siteFilter !== "all" && request.siteName !== siteFilter) return false;
+      // External scope overrides local status filter logic
+      const effectiveStatus = statusScope ?? statusFilter;
+      if (effectiveStatus !== "all" && request.status !== effectiveStatus) return false;
+      const rd = parseRequestDate(request);
+      if (!withinDateRange(rd)) return false;
+      return true;
+    })
+    // Sort by requestDate (desc) then fallback to createdAt
+    .sort((a: any, b: any) => {
+      const da = parseRequestDate(a)?.getTime() ?? 0;
+      const db = parseRequestDate(b)?.getTime() ?? 0;
+      return db - da; // newest first
+    });
 
   const getStatusBadge = (status: string | undefined) => {
     if (!status) return <Badge className="bg-muted text-muted-foreground">Unknown</Badge>;
@@ -220,7 +230,7 @@ export function RequestsTable({ requests, onViewDetails, onDispatch, companyId, 
     return (
       <div className="space-y-4">
         {/* Filters */}
-        <div className="flex gap-4 items-center">
+  <div className="flex gap-4 items-center flex-wrap">
           <div className="flex items-center gap-2">
             <Filter className="h-4 w-4 text-muted-foreground" />
             <span className="text-sm font-medium">Filters:</span>
@@ -238,6 +248,7 @@ export function RequestsTable({ requests, onViewDetails, onDispatch, companyId, 
               ))}
             </SelectContent>
           </Select>
+          {!statusScope && (
           <Select value={statusFilter} onValueChange={setStatusFilter}>
             <SelectTrigger className="w-[140px]">
               <SelectValue placeholder="All Status" />
@@ -249,6 +260,7 @@ export function RequestsTable({ requests, onViewDetails, onDispatch, companyId, 
               <SelectItem value="issued">Issued</SelectItem>
             </SelectContent>
           </Select>
+          )}
           <div className="flex items-center gap-2">
             <Input type="date" value={dateFrom ?? ''} onChange={(e) => setDateFrom(e.target.value || null)} className="w-[160px]" />
             <Input type="date" value={dateTo ?? ''} onChange={(e) => setDateTo(e.target.value || null)} className="w-[160px]" />
@@ -353,7 +365,7 @@ export function RequestsTable({ requests, onViewDetails, onDispatch, companyId, 
     return (
       <div className="space-y-4">
         {/* Filters */}
-        <div className="flex gap-2 items-center">
+  <div className="flex gap-2 items-center flex-wrap">
           <Select value={siteFilter} onValueChange={setSiteFilter}>
             <SelectTrigger className="w-[120px]">
               <SelectValue placeholder="Sites" />
@@ -365,6 +377,7 @@ export function RequestsTable({ requests, onViewDetails, onDispatch, companyId, 
               ))}
             </SelectContent>
           </Select>
+          {!statusScope && (
           <Select value={statusFilter} onValueChange={setStatusFilter}>
             <SelectTrigger className="w-[100px]">
               <SelectValue placeholder="Status" />
@@ -376,6 +389,7 @@ export function RequestsTable({ requests, onViewDetails, onDispatch, companyId, 
               <SelectItem value="issued">Issued</SelectItem>
             </SelectContent>
           </Select>
+          )}
           <div className="flex items-center gap-2">
             <Input type="date" value={dateFrom ?? ''} onChange={(e) => setDateFrom(e.target.value || null)} className="w-[120px]" />
             <Input type="date" value={dateTo ?? ''} onChange={(e) => setDateTo(e.target.value || null)} className="w-[120px]" />

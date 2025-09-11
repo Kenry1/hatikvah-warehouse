@@ -132,11 +132,11 @@ export const SiteUploadForm: React.FC<Props> = ({ onUpload }) => {
 
   return (
     <motion.div
-      className="space-y-4 p-6 border rounded-xl bg-white/70 dark:bg-slate-800/70 shadow-md backdrop-blur-md"
+      className="space-y-5 p-5 sm:p-6 border rounded-xl bg-white/70 dark:bg-slate-800/70 shadow-md backdrop-blur-md"
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
     >
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {/* Site ID */}
         <div className="space-y-2">
           <Label htmlFor="siteId" className="flex items-center gap-1 text-slate-600">
@@ -165,7 +165,7 @@ export const SiteUploadForm: React.FC<Props> = ({ onUpload }) => {
         </div>
 
         {/* Date */}
-        <div className="space-y-2">
+  <div className="space-y-2 sm:col-span-1 lg:col-span-1">
           <Label htmlFor="date" className="flex items-center gap-1 text-slate-600">
             <Calendar className="h-4 w-4" /> Date
           </Label>
@@ -182,7 +182,11 @@ export const SiteUploadForm: React.FC<Props> = ({ onUpload }) => {
       <div
         onDragOver={(e) => e.preventDefault()}
         onDrop={handleDrop}
-        className="border-2 border-dashed rounded-xl p-4 sm:p-6 text-center cursor-pointer hover:border-primary/60 transition min-h-[200px] flex items-center justify-center"
+        className="border-2 border-dashed rounded-xl p-4 sm:p-6 text-center cursor-pointer hover:border-primary/60 transition min-h-[200px] flex items-center justify-center focus-within:ring-2 focus-within:ring-primary/40 focus-within:border-primary/60"
+        tabIndex={0}
+        role="button"
+        aria-label={file ? `Selected file ${file.name}` : 'File upload dropzone'}
+        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { handleButtonClick(); } }}
       >
         {file ? (
           <div className="flex flex-col items-center gap-4">
@@ -198,6 +202,7 @@ export const SiteUploadForm: React.FC<Props> = ({ onUpload }) => {
               size="sm"
               onClick={handleButtonClick}
               className="mt-2 min-h-[44px] px-4"
+              aria-label="Choose a different file"
             >
               <UploadCloud className="h-4 w-4 mr-2" />
               Choose Different File
@@ -217,6 +222,7 @@ export const SiteUploadForm: React.FC<Props> = ({ onUpload }) => {
             <Button
               onClick={handleButtonClick}
               className="mt-2 min-h-[44px] px-6"
+              aria-label="Browse files to upload"
             >
               <UploadCloud className="h-4 w-4 mr-2" />
               Choose File
@@ -244,13 +250,24 @@ export const SiteUploadForm: React.FC<Props> = ({ onUpload }) => {
       </div>
 
       {/* Upload Button */}
-      <Button
-        className="w-full"
-        disabled={!file || isUploading}
-        onClick={handleUpload}
-      >
-        {isUploading ? "Uploading..." : "Upload File"}
-      </Button>
+      <div className="flex flex-col sm:flex-row gap-3">
+        <Button
+          className="w-full sm:w-auto flex-1"
+          disabled={!file || isUploading}
+          onClick={handleUpload}
+        >
+          {isUploading ? "Uploading..." : "Upload File"}
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          className="w-full sm:w-auto"
+          onClick={() => { setFile(null); setSiteId(""); setSiteName(""); setDate(""); }}
+          disabled={isUploading}
+        >
+          Reset
+        </Button>
+      </div>
     </motion.div>
   );
 };

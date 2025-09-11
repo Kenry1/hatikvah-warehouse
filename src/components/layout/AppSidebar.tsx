@@ -208,7 +208,7 @@ const getNavigationStructure = (role: UserRole): NavigationGroup[] => {
         title: 'Site Operations',
         items: [
           { title: 'Material Requests', url: '/material-requests', icon: Package, description: 'Request materials and supplies' },
-          { title: 'Site Documentation', url: '/site-docs', icon: FileText, description: 'Technical drawings and specs' },
+          { title: 'Site Documentation', url: '/site-documentation', icon: FileText, description: 'Technical drawings and specs' },
         ]
       }
     ],
