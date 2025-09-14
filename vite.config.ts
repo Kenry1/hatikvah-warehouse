@@ -6,8 +6,8 @@ import path from "path";
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
   server: {
-    host: "::",
-    port: 8080,
+  host: "localhost",
+  port: 5173,
   },
   plugins: [
     react(),
@@ -19,7 +19,7 @@ export default defineConfig(({ mode }) => ({
         globPatterns: ['**/*.{js,css,html,ico,png,svg,jpg,jpeg,woff2}'],
         navigateFallback: '/index.html',
         navigateFallbackDenylist: [/^\/api\//],
-    maximumFileSizeToCacheInBytes: 5 * 1024 * 1024, // allow up to 5MB assets in precache
+    maximumFileSizeToCacheInBytes: 8 * 1024 * 1024, // allow up to 8MB assets in precache
         runtimeCaching: [
           // Google Fonts stylesheets
           {
