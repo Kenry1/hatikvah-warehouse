@@ -288,7 +288,7 @@ const generateMockData = () => ({
     {
       id: '1',
       name: 'Fiber Optic Cable',
-      category: 'ftth' as const,
+      category: 'solar_equipment' as const,
       quantity: 500,
       unit: 'meters',
       reorderPoint: 100,

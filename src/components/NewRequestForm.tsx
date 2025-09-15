@@ -70,8 +70,8 @@ interface NewRequestFormProps {
 
 export function NewRequestForm({ open, onOpenChange }: NewRequestFormProps) {
   const { toast } = useToast();
-  const [items, setItems] = useState<Array<{ materialId: string; quantity: string }>>([
-    { materialId: "", quantity: "" }
+  const [items, setItems] = useState<Array<{ materialId: string; quantity: number }>>([
+    { materialId: "", quantity: 1 }
   ]);
   const [siteSearchOpen, setSiteSearchOpen] = useState(false);
   const [siteSearchValue, setSiteSearchValue] = useState("");
@@ -111,12 +111,12 @@ export function NewRequestForm({ open, onOpenChange }: NewRequestFormProps) {
       siteId: "",
       priority: "medium",
       notes: "",
-  items: [{ materialId: "", quantity: "" }],
+  items: [{ materialId: "", quantity: 1 }],
     },
   });
 
   const addItem = () => {
-  const newItems = [...items, { materialId: "", quantity: "" }];
+  const newItems = [...items, { materialId: "", quantity: 1 }];
     setItems(newItems);
     form.setValue('items', newItems);
   };
@@ -132,13 +132,13 @@ export function NewRequestForm({ open, onOpenChange }: NewRequestFormProps) {
   const updateItem = (index: number, field: 'materialId' | 'quantity', value: string | number) => {
     const newItems = [...items];
     if (field === 'quantity') {
-      newItems[index] = { ...newItems[index], quantity: String(value) };
+      const parsed = typeof value === 'string' ? parseInt(value, 10) || 0 : value;
+      newItems[index] = { ...newItems[index], quantity: parsed };
     } else {
-      newItems[index] = { ...newItems[index], [field]: value };
+      newItems[index] = { ...newItems[index], materialId: String(value) };
     }
     setItems(newItems);
-    // Convert quantity to number for form value
-    form.setValue('items', newItems.map(i => ({ ...i, quantity: i.quantity === "" ? 0 : Number(i.quantity) })));
+    form.setValue('items', newItems);
   };
 
   const getAvailableStock = (materialId: string) => {
