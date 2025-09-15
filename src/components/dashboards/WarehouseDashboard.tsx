@@ -9,7 +9,7 @@ import { InventoryOverview } from "../InventoryOverview";
 import { IssueRequestsManager } from "../IssueRequestsManager";
 import { AddStockForm } from "../AddStockForm";
 import { AuditTrail } from "../AuditTrail";
-import { mockInventoryData, mockRequests } from "../../lib/mockData";
+import { mockInventoryData } from "../../lib/mockData";
 import { db } from "../../lib/firebase";
 import { collection, getDocs, doc, updateDoc, increment, query, orderBy, limit, startAfter, DocumentSnapshot } from "firebase/firestore";
 
@@ -69,6 +69,29 @@ export const WarehouseDashboard = () => {
   }, []);
   const [searchTerm, setSearchTerm] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("all");
+  // Firestore-backed KPI for pending requests
+  const [pendingRequestCount, setPendingRequestCount] = useState(0);
+
+  // Fetch count of pending/submitted material requests
+  const refreshPendingCount = async () => {
+    try {
+      const snapshot = await getDocs(collection(db, "material_requests"));
+      const items = snapshot.docs.map(d => ({ id: d.id, ...d.data() as any }));
+      const count = items.filter((r: any) => r.status === "pending" || r.status === "submitted").length;
+      setPendingRequestCount(count);
+    } catch (err) {
+      console.error("Error fetching pending requests count:", err);
+    }
+  };
+
+  useEffect(() => {
+    // initial load
+    refreshPendingCount();
+    // refresh when global material requests events fire
+    const handler = () => refreshPendingCount();
+    window.addEventListener('materialRequests:refresh', handler);
+    return () => window.removeEventListener('materialRequests:refresh', handler);
+  }, []);
 
   const loadMore = async () => {
     if (!hasMore || loadingMore || !lastDoc) return;
@@ -143,7 +166,7 @@ export const WarehouseDashboard = () => {
     const unitPrice = typeof item.unitPrice === "number" ? item.unitPrice : 0;
     return sum + (quantity * unitPrice);
   }, 0);
-  const pendingRequests = mockRequests.filter(req => req.status === "pending").length;
+  const pendingRequests = pendingRequestCount;
 
   return (
     <div className="min-h-screen bg-background">
