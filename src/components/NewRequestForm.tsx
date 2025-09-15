@@ -70,8 +70,8 @@ interface NewRequestFormProps {
 
 export function NewRequestForm({ open, onOpenChange }: NewRequestFormProps) {
   const { toast } = useToast();
-  const [items, setItems] = useState<Array<{ materialId: string; quantity: number }>>([
-    { materialId: "", quantity: 1 }
+  const [items, setItems] = useState<Array<{ materialId: string; quantity: string }>>([
+    { materialId: "", quantity: "" }
   ]);
   const [siteSearchOpen, setSiteSearchOpen] = useState(false);
   const [siteSearchValue, setSiteSearchValue] = useState("");
@@ -111,12 +111,12 @@ export function NewRequestForm({ open, onOpenChange }: NewRequestFormProps) {
       siteId: "",
       priority: "medium",
       notes: "",
-      items: [{ materialId: "", quantity: 1 }],
+  items: [{ materialId: "", quantity: "" }],
     },
   });
 
   const addItem = () => {
-    const newItems = [...items, { materialId: "", quantity: 1 }];
+  const newItems = [...items, { materialId: "", quantity: "" }];
     setItems(newItems);
     form.setValue('items', newItems);
   };
@@ -131,9 +131,14 @@ export function NewRequestForm({ open, onOpenChange }: NewRequestFormProps) {
 
   const updateItem = (index: number, field: 'materialId' | 'quantity', value: string | number) => {
     const newItems = [...items];
-    newItems[index] = { ...newItems[index], [field]: value };
+    if (field === 'quantity') {
+      newItems[index] = { ...newItems[index], quantity: String(value) };
+    } else {
+      newItems[index] = { ...newItems[index], [field]: value };
+    }
     setItems(newItems);
-    form.setValue('items', newItems);
+    // Convert quantity to number for form value
+    form.setValue('items', newItems.map(i => ({ ...i, quantity: i.quantity === "" ? 0 : Number(i.quantity) })));
   };
 
   const getAvailableStock = (materialId: string) => {
@@ -511,7 +516,7 @@ export function NewRequestForm({ open, onOpenChange }: NewRequestFormProps) {
                         type="number"
                         min="1"
                         value={item.quantity}
-                        onChange={(e) => updateItem(index, 'quantity', parseInt(e.target.value) || 1)}
+                        onChange={e => updateItem(index, 'quantity', e.target.value)}
                         placeholder="Enter quantity"
                       />
                     </div>
