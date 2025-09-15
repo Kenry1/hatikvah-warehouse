@@ -12,6 +12,7 @@ type InventoryItem = BaseInventoryItem & { id?: string };
 type InventoryRow = InventoryItem & { id?: string; availableQuantity?: number };
 
 interface InventoryOverviewProps {
+  onDelete?: (itemId: string) => Promise<void> | void;
   onCategoryChange?: (itemId: string, newCategory: string) => Promise<void> | void;
   data: InventoryRow[];
   searchTerm: string;
@@ -34,6 +35,7 @@ export const InventoryOverview = ({
   onRestock,
   onUnitChange,
   onCategoryChange,
+  onDelete,
   onLoadMore,
   hasMore = false,
   loadingMore = false,
@@ -190,6 +192,11 @@ export const InventoryOverview = ({
                     }
                     item.unit = newUnit;
                   };
+                  const handleDelete = async () => {
+                    if (onDelete && item.id) {
+                      await onDelete(String(item.id));
+                    }
+                  };
                   return (
                     <TableRow key={key}>
                       <TableCell className="font-medium">{item.itemName}</TableCell>
@@ -242,6 +249,13 @@ export const InventoryOverview = ({
                             onClick={handleRestock}
                           >
                             Add
+                          </button>
+                          <button
+                            type="button"
+                            className="bg-red-500 text-white px-2 py-1 rounded hover:bg-red-600 transition-colors"
+                            onClick={handleDelete}
+                          >
+                            Delete
                           </button>
                         </div>
                       </TableCell>

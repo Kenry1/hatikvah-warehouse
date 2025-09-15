@@ -14,6 +14,15 @@ import { db } from "../../lib/firebase";
 import { collection, getDocs, doc, updateDoc, increment, query, orderBy, limit, startAfter, DocumentSnapshot } from "firebase/firestore";
 
 export const WarehouseDashboard = () => {
+  // Delete inventory item from Firestore and update local state
+  const handleDelete = async (itemId: string) => {
+    try {
+      await updateDoc(doc(db, "solar_warehouse", itemId), { deleted: true }); // Soft delete for safety
+      setInventoryData(prev => prev.filter((it: any) => String(it.id) !== String(itemId)));
+    } catch (err) {
+      console.error("Error deleting inventory item in Firestore:", err);
+    }
+  };
   // Persist category change to Firestore and update local state
   const handleCategoryChange = async (itemId: string, newCategory: string) => {
     try {
@@ -227,6 +236,7 @@ export const WarehouseDashboard = () => {
               onRestock={handleRestock}
               onUnitChange={handleUnitChange}
               onCategoryChange={handleCategoryChange}
+              onDelete={handleDelete}
               onLoadMore={loadMore}
               hasMore={hasMore}
               loadingMore={loadingMore}
