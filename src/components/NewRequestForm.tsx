@@ -112,21 +112,21 @@ export function NewRequestForm({ open, onOpenChange }: NewRequestFormProps) {
       siteId: "",
       priority: "medium",
       notes: "",
-      items: [{ category: "", materialId: "", quantity: 1 }],
+      items: items,
     },
   });
 
   const addItem = () => {
   const newItems = [{ category: "", materialId: "", quantity: 1 }, ...items];
   setItems(newItems);
-  form.setValue('items', newItems);
+  form.reset({ ...form.getValues(), items: newItems });
   };
 
   const removeItem = (index: number) => {
     if (items.length > 1) {
       const newItems = items.filter((_, i) => i !== index);
       setItems(newItems);
-      form.setValue('items', newItems);
+      form.reset({ ...form.getValues(), items: newItems });
     }
   };
 
@@ -141,7 +141,7 @@ export function NewRequestForm({ open, onOpenChange }: NewRequestFormProps) {
       newItems[index] = { ...newItems[index], category: String(value) };
     }
     setItems(newItems);
-    form.setValue('items', newItems);
+    form.reset({ ...form.getValues(), items: newItems });
   };
 
   const getAvailableStock = (materialId: string) => {
