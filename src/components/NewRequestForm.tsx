@@ -112,7 +112,7 @@ export function NewRequestForm({ open, onOpenChange }: NewRequestFormProps) {
       siteId: "",
       priority: "medium",
       notes: "",
-  items: [{ materialId: "", quantity: 1 }],
+      items: [{ category: "", materialId: "", quantity: 1 }],
     },
   });
 
