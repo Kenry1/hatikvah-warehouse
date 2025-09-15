@@ -12,12 +12,14 @@ type InventoryItem = BaseInventoryItem & { id?: string };
 type InventoryRow = InventoryItem & { id?: string; availableQuantity?: number };
 
 interface InventoryOverviewProps {
+  onCategoryChange?: (itemId: string, newCategory: string) => Promise<void> | void;
   data: InventoryRow[];
   searchTerm: string;
   setSearchTerm: (term: string) => void;
   categoryFilter: string;
   setCategoryFilter: (category: string) => void;
   onRestock?: (itemId: string, addQuantity: number) => Promise<void> | void;
+  onUnitChange?: (itemId: string, newUnit: string) => Promise<void> | void;
   onLoadMore?: () => Promise<void> | void;
   hasMore?: boolean;
   loadingMore?: boolean;
@@ -30,12 +32,15 @@ export const InventoryOverview = ({
   categoryFilter, 
   setCategoryFilter,
   onRestock,
+  onUnitChange,
+  onCategoryChange,
   onLoadMore,
   hasMore = false,
   loadingMore = false,
 }: InventoryOverviewProps) => {
   const [statusFilter, setStatusFilter] = useState("all");
   const [restockQty, setRestockQty] = useState<Record<string, string>>({});
+  const [unitEdit, setUnitEdit] = useState<Record<string, string>>({});
   const sentinelRef = useRef<HTMLDivElement | null>(null);
 
   // Infinite scroll: observe sentinel and call onLoadMore when visible
@@ -75,7 +80,7 @@ export const InventoryOverview = ({
 
   const getStockStatus = (item: InventoryRow) => {
     if (item.quantity === 0) {
-      return <Badge variant="destructive"><XCircle className="h-3 w-3 mr-1" />Out of Stock</Badge>;
+      return <Badge className="bg-red-500 text-white"><XCircle className="h-3 w-3 mr-1" />Out of Stock</Badge>;
     } else if (item.quantity <= item.reorderLevel) {
       return <Badge className="bg-yellow-500 text-black"><AlertCircle className="h-3 w-3 mr-1" />Low Stock</Badge>;
     } else {
@@ -83,7 +88,18 @@ export const InventoryOverview = ({
     }
   };
 
-  const categories = [...new Set(data.map(item => item.category))].filter(category => typeof category === 'string' && category.trim() !== '');
+  const allowedCategories = [
+    "Safety Equipment",
+    "Solar Equipment",
+    "Company Assets",
+    "Office Supplies"
+  ];
+  const categories = allowedCategories;
+
+  // Predefined units: SI units + buckets, wheelbarrows, tonnes
+  const unitOptions = [
+    "kg", "g", "mg", "lb", "oz", "l", "ml", "m", "cm", "mm", "pcs", "buckets", "wheelbarrows", "tonnes"
+  ];
 
   return (
   <Card>
@@ -160,22 +176,53 @@ export const InventoryOverview = ({
                   const handleRestock = async () => {
                     const qty = parseInt(restockQty[key] || "", 10);
                     if (!isNaN(qty) && qty > 0) {
-                      // If parent provided an onRestock handler, delegate to it for persistence
                       if (onRestock && item.id) {
                         await onRestock(String(item.id), qty);
                       }
-                      // Optimistic local update for immediate UI feedback
                       item.quantity = (Number(item.quantity) || 0) + qty;
                       setRestockQty(prev => ({ ...prev, [key]: "" }));
                     }
+                  };
+                  const handleUnitChange = async (newUnit: string) => {
+                    setUnitEdit(prev => ({ ...prev, [key]: newUnit }));
+                    if (onUnitChange && item.id) {
+                      await onUnitChange(String(item.id), newUnit);
+                    }
+                    item.unit = newUnit;
                   };
                   return (
                     <TableRow key={key}>
                       <TableCell className="font-medium">{item.itemName}</TableCell>
                       <TableCell className="font-mono text-sm">{item.itemCode}</TableCell>
-                      <TableCell>{item.category}</TableCell>
+                      <TableCell>
+                        <Select value={item.category} onValueChange={async (newCategory) => {
+                          if (onCategoryChange && item.id) {
+                            await onCategoryChange(String(item.id), newCategory);
+                          }
+                        }}>
+                          <SelectTrigger className="w-40">
+                            <SelectValue placeholder="Category" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {allowedCategories.map(category => (
+                              <SelectItem key={category} value={category}>{category}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </TableCell>
                       <TableCell className="text-right font-medium">{item.quantity}</TableCell>
-                      <TableCell>{item.unit}</TableCell>
+                      <TableCell>
+                        <Select value={unitEdit[key] || item.unit} onValueChange={handleUnitChange}>
+                          <SelectTrigger className="w-32">
+                            <SelectValue placeholder="Unit" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {unitOptions.map(unit => (
+                              <SelectItem key={unit} value={unit}>{unit}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </TableCell>
                       <TableCell className="text-right">{item.reorderLevel}</TableCell>
                       <TableCell>{getStockStatus(item)}</TableCell>
                       <TableCell className="text-right">{typeof item.unitPrice === 'number' ? item.unitPrice.toFixed(2) : '-'}</TableCell>

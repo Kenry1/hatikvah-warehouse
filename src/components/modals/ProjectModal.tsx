@@ -68,7 +68,7 @@ export function ProjectModal({ isOpen, onClose, onSave, initialData, mode = 'cre
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const categories = [
-    'FTTH Installation', 'FTTX Deployment', 'Network Upgrade', 'Safety Implementation',
+  'Solar Equipment Deployment', 'Network Upgrade', 'Safety Implementation',
     'Infrastructure Development', 'Equipment Installation', 'Maintenance Project',
     'Software Implementation', 'Training Program', 'Consulting Services'
   ];

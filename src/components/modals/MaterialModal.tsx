@@ -64,13 +64,12 @@ export function MaterialModal({ isOpen, onClose, onSave, initialData, mode = 'cr
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const categories = [
-    'Safety Equipment', 'FTTH Materials', 'FTTX Components', 'Company Assets', 'Electronic and Computing Devices'
+  'Safety Equipment', 'Solar Equipment', 'Company Assets', 'Electronic and Computing Devices'
   ];
 
   const subcategories = {
     'Safety Equipment': ['Hard Hats', 'Safety Vests', 'Work Gloves', 'Safety Boots', 'Eye Protection', 'Fall Protection'],
-    'FTTH Materials': ['Fiber Optic Cables', 'ONT Devices', 'Optical Splitters', 'Drop Cables', 'Closure Systems'],
-    'FTTX Components': ['Distribution Boxes', 'Patch Panels', 'Network Connectors', 'Splice Trays', 'Cable Management'],
+  'Solar Equipment': ['Distribution Boxes', 'Patch Panels', 'Network Connectors', 'Splice Trays', 'Cable Management'],
     'Company Assets': ['Testing Equipment', 'Power Tools', 'Vehicles', 'Office Equipment', 'Software Licenses'],
     'Electronic and Computing Devices': ['Laptops', 'Desktops', 'Monitors', 'Servers', 'Network Devices', 'Mobile Devices', 'Printers', 'Peripherals']
   };

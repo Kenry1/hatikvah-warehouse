@@ -14,6 +14,20 @@ import { db } from "../../lib/firebase";
 import { collection, getDocs, doc, updateDoc, increment, query, orderBy, limit, startAfter, DocumentSnapshot } from "firebase/firestore";
 
 export const WarehouseDashboard = () => {
+  // Persist category change to Firestore and update local state
+  const handleCategoryChange = async (itemId: string, newCategory: string) => {
+    try {
+      const ref = doc(db, "solar_warehouse", itemId);
+      await updateDoc(ref, { category: newCategory });
+      setInventoryData(prev => prev.map((it: any) =>
+        String(it.id) === String(itemId)
+          ? { ...it, category: newCategory }
+          : it
+      ));
+    } catch (err) {
+      console.error("Error updating category in Firestore:", err);
+    }
+  };
   const [inventoryData, setInventoryData] = useState<any[]>([]);
   const PAGE_SIZE = 25;
   const [lastDoc, setLastDoc] = useState<DocumentSnapshot | null>(null);
@@ -76,12 +90,10 @@ export const WarehouseDashboard = () => {
   const handleRestock = async (itemId: string, addQuantity: number) => {
     try {
       const ref = doc(db, "solar_warehouse", itemId);
-      // Attempt to increment both availableQuantity and quantity for compatibility
       await updateDoc(ref, {
         availableQuantity: increment(addQuantity),
         quantity: increment(addQuantity),
       });
-      // Local state update
       setInventoryData(prev => prev.map((it: any) =>
         String(it.id) === String(itemId)
           ? { ...it, quantity: (Number(it.quantity) || 0) + addQuantity, availableQuantity: (Number((it as any).availableQuantity) || Number(it.quantity) || 0) + addQuantity }
@@ -89,6 +101,21 @@ export const WarehouseDashboard = () => {
       ));
     } catch (err) {
       console.error("Error updating stock in Firestore:", err);
+    }
+  };
+
+  // Persist unit change to Firestore and update local state
+  const handleUnitChange = async (itemId: string, newUnit: string) => {
+    try {
+      const ref = doc(db, "solar_warehouse", itemId);
+      await updateDoc(ref, { unit: newUnit });
+      setInventoryData(prev => prev.map((it: any) =>
+        String(it.id) === String(itemId)
+          ? { ...it, unit: newUnit }
+          : it
+      ));
+    } catch (err) {
+      console.error("Error updating unit in Firestore:", err);
     }
   };
 
@@ -116,10 +143,10 @@ export const WarehouseDashboard = () => {
               </div>
             </div>
             <div className="flex items-center space-x-2 sm:space-x-4">
-              <Badge variant="outline" className="text-yellow-500 border-yellow-500">
+              <Badge className="border border-yellow-500 text-yellow-500">
                 {lowStockItems} Low Stock
               </Badge>
-              <Badge variant="outline">
+              <Badge className="border">
                 {pendingRequests} Pending Requests
               </Badge>
             </div>
@@ -198,6 +225,8 @@ export const WarehouseDashboard = () => {
               categoryFilter={categoryFilter}
               setCategoryFilter={setCategoryFilter}
               onRestock={handleRestock}
+              onUnitChange={handleUnitChange}
+              onCategoryChange={handleCategoryChange}
               onLoadMore={loadMore}
               hasMore={hasMore}
               loadingMore={loadingMore}

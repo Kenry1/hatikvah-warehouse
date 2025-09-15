@@ -57,7 +57,7 @@ export function SupplierModal({ isOpen, onClose, onSave, initialData, mode = 'cr
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const categories = [
-    'Safety Equipment', 'FTTH Materials', 'FTTX Components', 'Electronics',
+  'Safety Equipment', 'Solar Equipment', 'Electronics',
     'Office Supplies', 'Vehicles & Parts', 'Software & Licenses', 'Consulting Services',
     'Construction Materials', 'Tools & Equipment', 'Telecommunications', 'IT Hardware'
   ];

@@ -91,7 +91,7 @@ export interface Project {
 export interface Material {
   id: string;
   name: string;
-  category: 'safety' | 'ftth' | 'fttx' | 'company_assets';
+  category: 'safety' | 'solar_equipment' | 'company_assets';
   quantity: number;
   unit: string;
   reorderPoint: number;

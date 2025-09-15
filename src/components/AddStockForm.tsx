@@ -19,8 +19,7 @@ import { AuthContext } from "../contexts/AuthContext";
 
 const categories = [
 	"Safety Equipment",
-	"FTTH Equipment",
-	"FTTX Components",
+	"Solar Equipment",
 	"Company Assets",
 	"Office Supplies",
 ];

@@ -20,10 +20,10 @@ export function OperationsDashboard() {
   ];
 
   const inventoryItems = [
-    { category: 'FTTH Equipment', value: '$450,000', items: 342, lowStock: 12 },
-    { category: 'Safety Gear', value: '$125,000', items: 156, lowStock: 5 },
-    { category: 'Company Assets', value: '$1,200,000', items: 89, lowStock: 2 },
-    { category: 'FTTX Components', value: '$680,000', items: 234, lowStock: 8 },
+  { category: 'Solar Equipment', value: '$450,000', items: 342, lowStock: 12 },
+  { category: 'Safety Gear', value: '$125,000', items: 156, lowStock: 5 },
+  { category: 'Company Assets', value: '$1,200,000', items: 89, lowStock: 2 },
+  { category: 'Solar Equipment', value: '$680,000', items: 234, lowStock: 8 },
   ];
 
   const vehicleStatus = [
