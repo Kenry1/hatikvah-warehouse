@@ -12,7 +12,7 @@ import { useAuth } from "../contexts/AuthContext";
 import { db } from "../lib/firebase";
 import { doc, updateDoc, serverTimestamp } from "firebase/firestore";
 
-export const IssueRequestsManager = ({ fetchAll = false }: { fetchAll?: boolean }) => {
+export const IssueRequestsManager = ({ fetchAll = false, refreshKey }: { fetchAll?: boolean, refreshKey?: number }) => {
   // Local materials list for lookup (can be replaced with Firestore fetch if needed)
   const [allMaterials, setAllMaterials] = useState<any[]>([]);
   const [requests, setRequests] = useState<MaterialRequest[]>([]);
@@ -22,9 +22,9 @@ export const IssueRequestsManager = ({ fetchAll = false }: { fetchAll?: boolean 
   const { toast } = useToast();
 
   useEffect(() => {
-  async function fetchRequests() {
+    async function fetchRequests() {
       try {
-    const reqs = await getMaterialRequestList(fetchAll ? undefined : currentUser?.id);
+        const reqs = await getMaterialRequestList(fetchAll ? undefined : currentUser?.id);
         setRequests(reqs.map((r) => ({
           ...r,
           // Only include fields defined in MaterialRequest type
@@ -47,12 +47,12 @@ export const IssueRequestsManager = ({ fetchAll = false }: { fetchAll?: boolean 
           approvedBy: r.approvedBy ?? '',
           approvedDate: r.approvedDate ? (typeof r.approvedDate === 'string' ? new Date(r.approvedDate) : r.approvedDate) : undefined,
           fulfilledDate: r.fulfilledDate ? (typeof r.fulfilledDate === 'string' ? new Date(r.fulfilledDate) : r.fulfilledDate) : undefined,
-      })));
+        })));
       } catch (err) {
         console.error("Error fetching material requests:", err);
       }
     }
-  fetchRequests();
+    fetchRequests();
     async function fetchMaterials() {
       try {
         // Try to fetch all materials from Firestore (solar_warehouse collection)
@@ -65,7 +65,7 @@ export const IssueRequestsManager = ({ fetchAll = false }: { fetchAll?: boolean 
       }
     }
     fetchMaterials();
-  }, [fetchAll, currentUser?.id]);
+  }, [fetchAll, currentUser?.id, refreshKey]);
   // Helper to get item name from materialId
   const getMaterialName = (materialId: string) => {
     const material = allMaterials.find(m => m.id === materialId);

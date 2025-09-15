@@ -14,6 +14,13 @@ import { db } from "../../lib/firebase";
 import { collection, getDocs, doc, updateDoc, increment, query, orderBy, limit, startAfter, DocumentSnapshot } from "firebase/firestore";
 
 export const WarehouseDashboard = () => {
+  // Requests refresh trigger for IssueRequestsManager
+  const [requestsRefreshKey, setRequestsRefreshKey] = useState(0);
+  useEffect(() => {
+    const handler = () => setRequestsRefreshKey((k) => k + 1);
+    window.addEventListener('materialRequests:refresh', handler);
+    return () => window.removeEventListener('materialRequests:refresh', handler);
+  }, []);
   // Delete inventory item from Firestore and update local state
   const handleDelete = async (itemId: string) => {
     try {
@@ -244,7 +251,7 @@ export const WarehouseDashboard = () => {
           </TabsContent>
 
           <TabsContent value="requests">
-            <IssueRequestsManager fetchAll />
+            <IssueRequestsManager fetchAll refreshKey={requestsRefreshKey} />
           </TabsContent>
 
           <TabsContent value="add-stock">

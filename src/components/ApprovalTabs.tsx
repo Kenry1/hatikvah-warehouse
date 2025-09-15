@@ -200,6 +200,9 @@ export function ApprovalTabs({ fetchAll = false }: { fetchAll?: boolean } = {}) 
     materialFilterOptions,
     ['siteName', 'requestedByUsername']
   );
+  // Categorize material requests (after materialFilter is defined)
+  const approvedMaterialRequests = materialFilter.filteredData.filter((req: any) => req.status === "approved");
+  const nonApprovedMaterialRequests = materialFilter.filteredData.filter((req: any) => req.status !== "approved");
 
 // Helper functions for status/urgency
 function getUrgencyColor(urgency: string) {
@@ -351,18 +354,6 @@ const MaterialRequestCard = ({ request, onApprove }: { request: any, onApprove: 
             </div>
           )}
         </div>
-        {request.status === "pending" && (
-          <div className="flex flex-row gap-2 mt-2 w-full">
-            <Button size="sm" className="flex-1 min-w-0" onClick={() => onApprove(request.id)}>
-              <CheckCircle className="h-4 w-4 mr-2" />
-              Approve
-            </Button>
-            <Button size="sm" variant="destructive" className="flex-1 min-w-0" onClick={handleDiscard} disabled={loading}>
-              <XCircle className="h-4 w-4 mr-2" />
-              {loading ? "Discarding..." : "Discard"}
-            </Button>
-          </div>
-        )}
       </CardContent>
     </Card>
   );
@@ -421,22 +412,47 @@ const MaterialRequestCard = ({ request, onApprove }: { request: any, onApprove: 
             searchPlaceholder="Search material requests..."
             hasActiveFilters={materialFilter.hasActiveFilters}
           />
-          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
-            {materialFilter.filteredData.map((request) => (
-              <MaterialRequestCard
-                key={request.id}
-                request={{
-                  ...request,
-                  onDiscard: (id: string) => {
-                    setMaterialRequests((prev) => prev.filter(r => r.id !== id));
-                  },
-                }}
-                onApprove={async (id) => {
-                  await updateDoc(doc(db, "material_requests", id), { status: "approved" });
-                  setMaterialRequests((prev) => prev.map(r => r.id === id ? { ...r, status: "approved" } : r));
-                }}
-              />
-            ))}
+          <div className="space-y-6">
+            <div>
+              <h4 className="text-lg font-semibold mb-2">Non-Approved Requests</h4>
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+                {nonApprovedMaterialRequests.map((request) => (
+                  <MaterialRequestCard
+                    key={request.id}
+                    request={{
+                      ...request,
+                      onDiscard: (id: string) => {
+                        setMaterialRequests((prev) => prev.filter(r => r.id !== id));
+                      },
+                    }}
+                    onApprove={async (id) => {
+                      await updateDoc(doc(db, "material_requests", id), { status: "approved" });
+                      setMaterialRequests((prev) => prev.map(r => r.id === id ? { ...r, status: "approved" } : r));
+                    }}
+                  />
+                ))}
+              </div>
+            </div>
+            <div>
+              <h4 className="text-lg font-semibold mb-2">Approved Requests</h4>
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+                {approvedMaterialRequests.map((request) => (
+                  <MaterialRequestCard
+                    key={request.id}
+                    request={{
+                      ...request,
+                      onDiscard: (id: string) => {
+                        setMaterialRequests((prev) => prev.filter(r => r.id !== id));
+                      },
+                    }}
+                    onApprove={async (id) => {
+                      await updateDoc(doc(db, "material_requests", id), { status: "approved" });
+                      setMaterialRequests((prev) => prev.map(r => r.id === id ? { ...r, status: "approved" } : r));
+                    }}
+                  />
+                ))}
+              </div>
+            </div>
           </div>
         </TabsContent>
 
