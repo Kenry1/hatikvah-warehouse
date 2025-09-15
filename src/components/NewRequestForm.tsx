@@ -58,6 +58,7 @@ const formSchema = z.object({
   priority: z.enum(["low", "medium", "high", "urgent"]),
   notes: z.string().optional(),
   items: z.array(z.object({
+    category: z.string().min(1, "Please select a category"),
     materialId: z.string().min(1, "Please select a material"),
     quantity: z.number().min(1, "Quantity must be at least 1"),
   })).min(1, "Please add at least one item"),
@@ -70,14 +71,14 @@ interface NewRequestFormProps {
 
 export function NewRequestForm({ open, onOpenChange }: NewRequestFormProps) {
   const { toast } = useToast();
-  const [items, setItems] = useState<Array<{ materialId: string; quantity: number }>>([
-    { materialId: "", quantity: 1 }
+  const [items, setItems] = useState<Array<{ category: string; materialId: string; quantity: number }>>([
+    { category: "", materialId: "", quantity: 1 }
   ]);
   const [siteSearchOpen, setSiteSearchOpen] = useState(false);
   const [siteSearchValue, setSiteSearchValue] = useState("");
   const [selectedSite, setSelectedSite] = useState("");
   const [allMaterials, setAllMaterials] = useState<any[]>([]);
-  const [selectedCategory, setSelectedCategory] = useState<string>("");
+  // Remove shared selectedCategory state
   const [stockLevels, setStockLevels] = useState<any[]>([]);
   const [allSites, setAllSites] = useState<string[]>([]);
   const { user } = useContext(AuthContext) || {};
@@ -116,9 +117,9 @@ export function NewRequestForm({ open, onOpenChange }: NewRequestFormProps) {
   });
 
   const addItem = () => {
-  const newItems = [...items, { materialId: "", quantity: 1 }];
-    setItems(newItems);
-    form.setValue('items', newItems);
+  const newItems = [{ category: "", materialId: "", quantity: 1 }, ...items];
+  setItems(newItems);
+  form.setValue('items', newItems);
   };
 
   const removeItem = (index: number) => {
@@ -129,13 +130,15 @@ export function NewRequestForm({ open, onOpenChange }: NewRequestFormProps) {
     }
   };
 
-  const updateItem = (index: number, field: 'materialId' | 'quantity', value: string | number) => {
+  const updateItem = (index: number, field: 'materialId' | 'quantity' | 'category', value: string | number) => {
     const newItems = [...items];
     if (field === 'quantity') {
       const parsed = typeof value === 'string' ? parseInt(value, 10) || 0 : value;
       newItems[index] = { ...newItems[index], quantity: parsed };
-    } else {
+    } else if (field === 'materialId') {
       newItems[index] = { ...newItems[index], materialId: String(value) };
+    } else if (field === 'category') {
+      newItems[index] = { ...newItems[index], category: String(value) };
     }
     setItems(newItems);
     form.setValue('items', newItems);
@@ -259,7 +262,7 @@ export function NewRequestForm({ open, onOpenChange }: NewRequestFormProps) {
       });
       // Reset form
       form.reset();
-      setItems([{ materialId: "", quantity: 1 }]);
+  setItems([{ category: "", materialId: "", quantity: 1 }]);
       setSiteSearchValue("");
       setSelectedSite("");
       onOpenChange(false);
@@ -288,9 +291,7 @@ export function NewRequestForm({ open, onOpenChange }: NewRequestFormProps) {
   );
 
   // Filter materials by selected category and sort alphabetically
-  const filteredMaterials = allMaterials
-    .filter(m => selectedCategory ? m.category === selectedCategory : true)
-    .sort((a, b) => a.itemName.localeCompare(b.itemName));
+  // Remove shared selectedCategory, filter by item.category in UI
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -478,8 +479,8 @@ export function NewRequestForm({ open, onOpenChange }: NewRequestFormProps) {
                     <div>
                       <label className="text-sm font-medium">Category</label>
                       <Select
-                        onValueChange={value => setSelectedCategory(value)}
-                        value={selectedCategory}
+                        onValueChange={value => updateItem(index, 'category', value)}
+                        value={items[index].category || ""}
                       >
                         <SelectTrigger>
                           <SelectValue placeholder="Select category" />
@@ -501,7 +502,7 @@ export function NewRequestForm({ open, onOpenChange }: NewRequestFormProps) {
                           <SelectValue placeholder="Select material" />
                         </SelectTrigger>
                         <SelectContent>
-                          {filteredMaterials.map((material) => (
+                          {allMaterials.filter(m => items[index].category ? m.category === items[index].category : true).map((material) => (
                             <SelectItem key={material.id} value={material.id}>
                               {material.itemName} - {material.unit}
                             </SelectItem>
