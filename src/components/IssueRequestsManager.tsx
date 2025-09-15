@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { CheckCircle, XCircle, Clock, User, Calendar, Package } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "../hooks/use-toast";
 import { getMaterialRequestList } from "../lib/firestoreHelpers";
 import { MaterialRequest } from "../types/inventory";
@@ -153,30 +154,27 @@ export const IssueRequestsManager = ({ fetchAll = false, refreshKey }: { fetchAl
 
   return (
     <div className="space-y-6">
-      {/* Assets Modal */}
-      {showAssetsModal && selectedAssets && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
-          <div className="bg-white dark:bg-gray-900 rounded-lg shadow-lg p-6 min-w-[320px] max-w-[90vw]">
-            <h2 className="text-lg font-bold mb-4">Requested Items</h2>
-            <ul className="list-disc pl-4 mb-4">
-              {selectedAssets.map((item, idx) => (
-                <li key={idx} className="mb-2">
-                  <div><span className="font-semibold">Name:</span> {getMaterialName ? getMaterialName(item.materialId) : (item.itemName || item.materialName || item.name || 'Unnamed Item')}</div>
-                  <div><span className="font-semibold">Quantity:</span> {item.requestedQuantity ?? item.quantity ?? '-'} {item.unit ?? ''}</div>
-                  {item.notes && <div><span className="font-semibold">Notes:</span> {item.notes}</div>}
-                  {item.priority && <div><span className="font-semibold">Priority:</span> {item.priority}</div>}
-                </li>
-              ))}
-            </ul>
-            <button
-              className="px-4 py-2 rounded w-full bg-gray-800 text-white dark:bg-gray-800 dark:text-white hover:bg-gray-700 dark:hover:bg-gray-700 transition-colors"
-              onClick={() => setShowAssetsModal(false)}
-            >
-              Close
-            </button>
+      {/* Assets Modal (Dialog) */}
+      <Dialog open={showAssetsModal} onOpenChange={setShowAssetsModal}>
+        <DialogContent className="max-w-2xl w-[92vw] sm:w-[640px] max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Requested Items</DialogTitle>
+          </DialogHeader>
+          <ul className="list-disc pl-4 space-y-2">
+            {(selectedAssets ?? []).map((item, idx) => (
+              <li key={idx}>
+                <div><span className="font-semibold">Name:</span> {getMaterialName ? getMaterialName(item.materialId) : (item.itemName || item.materialName || item.name || 'Unnamed Item')}</div>
+                <div><span className="font-semibold">Quantity:</span> {item.requestedQuantity ?? item.quantity ?? '-'} {item.unit ?? ''}</div>
+                {item.notes && <div><span className="font-semibold">Notes:</span> {item.notes}</div>}
+                {item.priority && <div><span className="font-semibold">Priority:</span> {item.priority}</div>}
+              </li>
+            ))}
+          </ul>
+          <div className="pt-4">
+            <Button className="w-full" onClick={() => setShowAssetsModal(false)}>Close</Button>
           </div>
-        </div>
-      )}
+        </DialogContent>
+      </Dialog>
       {/* Submitted Requests */}
       <Card>
         <CardHeader>
@@ -193,32 +191,32 @@ export const IssueRequestsManager = ({ fetchAll = false, refreshKey }: { fetchAl
               <AlertDescription>No submitted requests.</AlertDescription>
             </Alert>
           ) : (
-            <div className="rounded-md border">
-              <Table>
+            <div className="rounded-md border overflow-x-auto">
+              <Table className="text-xs sm:text-sm">
                 <TableHeader>
                   <TableRow>
                     <TableHead>Request ID</TableHead>
                     <TableHead>State</TableHead>
                     <TableHead>Requester</TableHead>
-                    <TableHead>Requester Role</TableHead>
-                    <TableHead>Approver</TableHead>
-                    <TableHead>Approver Role</TableHead>
-                    <TableHead>Request Date</TableHead>
-                    <TableHead>Priority</TableHead>
+                    <TableHead className="hidden md:table-cell">Requester Role</TableHead>
+                    <TableHead className="hidden lg:table-cell">Approver</TableHead>
+                    <TableHead className="hidden xl:table-cell">Approver Role</TableHead>
+                    <TableHead className="hidden sm:table-cell">Request Date</TableHead>
+                    <TableHead className="hidden sm:table-cell">Priority</TableHead>
                     <TableHead>Assets</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {submittedRequests.map((request) => (
                     <TableRow key={request.id}>
-                      <TableCell className="font-mono text-sm">{request.id}</TableCell>
+                      <TableCell className="font-mono text-[10px] sm:text-xs md:text-sm whitespace-nowrap">{request.id}</TableCell>
                       <TableCell>{request.status}</TableCell>
                       <TableCell>{request.requestedByUsername ?? request.requestedBy ?? ''}</TableCell>
-                      <TableCell>{request.requestorRole ?? ''}</TableCell>
-                      <TableCell>{request.approver ?? request.approvedBy ?? ''}</TableCell>
-                      <TableCell>{request.approverRole ?? ''}</TableCell>
-                      <TableCell>{request.requestDate ? new Date(request.requestDate).toLocaleDateString() : "N/A"}</TableCell>
-                      <TableCell>{request.priority ?? ''}</TableCell>
+                      <TableCell className="hidden md:table-cell">{request.requestorRole ?? ''}</TableCell>
+                      <TableCell className="hidden lg:table-cell">{request.approver ?? request.approvedBy ?? ''}</TableCell>
+                      <TableCell className="hidden xl:table-cell">{request.approverRole ?? ''}</TableCell>
+                      <TableCell className="hidden sm:table-cell">{request.requestDate ? new Date(request.requestDate).toLocaleDateString() : "N/A"}</TableCell>
+                      <TableCell className="hidden sm:table-cell">{request.priority ?? ''}</TableCell>
                       <TableCell>
                         <button
                           className="bg-blue-100 text-blue-900 px-2 py-1 rounded text-xs"
@@ -254,32 +252,32 @@ export const IssueRequestsManager = ({ fetchAll = false, refreshKey }: { fetchAl
               <AlertDescription>No approved requests.</AlertDescription>
             </Alert>
           ) : (
-            <div className="rounded-md border">
-              <Table>
+            <div className="rounded-md border overflow-x-auto">
+              <Table className="text-xs sm:text-sm">
                 <TableHeader>
                   <TableRow>
                     <TableHead>Request ID</TableHead>
                     <TableHead>State</TableHead>
                     <TableHead>Requester</TableHead>
-                    <TableHead>Requester Role</TableHead>
-                    <TableHead>Approver</TableHead>
-                    <TableHead>Approver Role</TableHead>
-                    <TableHead>Request Date</TableHead>
-                    <TableHead>Priority</TableHead>
+                    <TableHead className="hidden md:table-cell">Requester Role</TableHead>
+                    <TableHead className="hidden lg:table-cell">Approver</TableHead>
+                    <TableHead className="hidden xl:table-cell">Approver Role</TableHead>
+                    <TableHead className="hidden sm:table-cell">Request Date</TableHead>
+                    <TableHead className="hidden sm:table-cell">Priority</TableHead>
                     <TableHead>Assets</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {approvedRequests.map((request) => (
                     <TableRow key={request.id}>
-                      <TableCell className="font-mono text-sm">{request.id}</TableCell>
+                      <TableCell className="font-mono text-[10px] sm:text-xs md:text-sm whitespace-nowrap">{request.id}</TableCell>
                       <TableCell>{request.status}</TableCell>
                       <TableCell>{request.requestedByUsername ?? request.requestedBy ?? ''}</TableCell>
-                      <TableCell>{request.requestorRole ?? ''}</TableCell>
-                      <TableCell>{request.approver ?? ''}</TableCell>
-                      <TableCell>{request.approverRole ?? ''}</TableCell>
-                      <TableCell>{request.requestDate ? new Date(request.requestDate).toLocaleDateString() : "N/A"}</TableCell>
-                      <TableCell>{request.priority ?? ''}</TableCell>
+                      <TableCell className="hidden md:table-cell">{request.requestorRole ?? ''}</TableCell>
+                      <TableCell className="hidden lg:table-cell">{request.approver ?? ''}</TableCell>
+                      <TableCell className="hidden xl:table-cell">{request.approverRole ?? ''}</TableCell>
+                      <TableCell className="hidden sm:table-cell">{request.requestDate ? new Date(request.requestDate).toLocaleDateString() : "N/A"}</TableCell>
+                      <TableCell className="hidden sm:table-cell">{request.priority ?? ''}</TableCell>
                       <TableCell>
                         <button
                           className="bg-blue-100 text-blue-900 px-2 py-1 rounded text-xs"
@@ -325,34 +323,34 @@ export const IssueRequestsManager = ({ fetchAll = false, refreshKey }: { fetchAl
               <AlertDescription>No issued requests.</AlertDescription>
             </Alert>
           ) : (
-            <div className="rounded-md border">
-              <Table>
+            <div className="rounded-md border overflow-x-auto">
+              <Table className="text-xs sm:text-sm">
                 <TableHeader>
                   <TableRow>
                     <TableHead>Request ID</TableHead>
                     <TableHead>State</TableHead>
                     <TableHead>Requester</TableHead>
-                    <TableHead>Requester Role</TableHead>
-                    <TableHead>Approver</TableHead>
-                    <TableHead>Approver Role</TableHead>
-                    <TableHead>Issued By</TableHead>
-                    <TableHead>Request Date</TableHead>
-                    <TableHead>Priority</TableHead>
+                    <TableHead className="hidden md:table-cell">Requester Role</TableHead>
+                    <TableHead className="hidden lg:table-cell">Approver</TableHead>
+                    <TableHead className="hidden xl:table-cell">Approver Role</TableHead>
+                    <TableHead className="hidden lg:table-cell">Issued By</TableHead>
+                    <TableHead className="hidden sm:table-cell">Request Date</TableHead>
+                    <TableHead className="hidden sm:table-cell">Priority</TableHead>
                     <TableHead>Assets</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {issuedRequests.map((request) => (
                     <TableRow key={request.id}>
-                      <TableCell className="font-mono text-sm">{request.id}</TableCell>
+                      <TableCell className="font-mono text-[10px] sm:text-xs md:text-sm whitespace-nowrap">{request.id}</TableCell>
                       <TableCell>{request.status}</TableCell>
                       <TableCell>{request.requestedByUsername ?? request.requestedBy ?? ''}</TableCell>
-                      <TableCell>{request.requestorRole ?? ''}</TableCell>
-                      <TableCell>{request.approver ?? ''}</TableCell>
-                      <TableCell>{request.approverRole ?? ''}</TableCell>
-                      <TableCell>{request.issuedBy ?? ''}</TableCell>
-                      <TableCell>{request.requestDate ? new Date(request.requestDate).toLocaleDateString() : "N/A"}</TableCell>
-                      <TableCell>{request.priority ?? ''}</TableCell>
+                      <TableCell className="hidden md:table-cell">{request.requestorRole ?? ''}</TableCell>
+                      <TableCell className="hidden lg:table-cell">{request.approver ?? ''}</TableCell>
+                      <TableCell className="hidden xl:table-cell">{request.approverRole ?? ''}</TableCell>
+                      <TableCell className="hidden lg:table-cell">{request.issuedBy ?? ''}</TableCell>
+                      <TableCell className="hidden sm:table-cell">{request.requestDate ? new Date(request.requestDate).toLocaleDateString() : "N/A"}</TableCell>
+                      <TableCell className="hidden sm:table-cell">{request.priority ?? ''}</TableCell>
                       <TableCell>
                         <button
                           className="bg-blue-100 text-blue-900 px-2 py-1 rounded text-xs"
