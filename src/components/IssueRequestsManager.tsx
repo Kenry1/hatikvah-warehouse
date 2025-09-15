@@ -146,8 +146,8 @@ export const IssueRequestsManager = ({ fetchAll = false, refreshKey }: { fetchAl
     }
   };
 
-  // Use allowed status values from MaterialRequest type
-  const submittedRequests = requests.filter(req => req.status === "submitted");
+  // Group non-approved requests (include both 'submitted' and 'pending')
+  const submittedRequests = requests.filter(req => req.status === "submitted" || req.status === "pending");
   const approvedRequests = requests.filter(req => req.status === "approved");
   const issuedRequests = requests.filter(req => req.status === "issued");
 
