@@ -61,7 +61,7 @@ const formSchema = z.object({
     category: z.string().min(1, "Please select a category"),
     materialId: z.string().min(1, "Please select a material"),
     quantity: z.number().min(1, "Quantity must be at least 1"),
-  })).min(1, "Please add at least one item"),
+  })),
 });
 
 interface NewRequestFormProps {
