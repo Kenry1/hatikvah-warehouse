@@ -203,6 +203,7 @@ export const IssueRequestsManager = ({ fetchAll = false, refreshKey }: { fetchAl
                     <TableHead className="hidden xl:table-cell">Approver Role</TableHead>
                     <TableHead className="hidden sm:table-cell">Request Date</TableHead>
                     <TableHead className="hidden sm:table-cell">Priority</TableHead>
+                    <TableHead className="hidden sm:table-cell">Site</TableHead>
                     <TableHead>Assets</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -217,6 +218,7 @@ export const IssueRequestsManager = ({ fetchAll = false, refreshKey }: { fetchAl
                       <TableCell className="hidden xl:table-cell">{request.approverRole ?? ''}</TableCell>
                       <TableCell className="hidden sm:table-cell">{request.requestDate ? new Date(request.requestDate).toLocaleDateString() : "N/A"}</TableCell>
                       <TableCell className="hidden sm:table-cell">{request.priority ?? ''}</TableCell>
+                      <TableCell className="hidden sm:table-cell">{request.siteName || request.siteId || '-'}</TableCell>
                       <TableCell>
                         <button
                           className="bg-blue-100 text-blue-900 px-2 py-1 rounded text-xs"
@@ -264,6 +266,7 @@ export const IssueRequestsManager = ({ fetchAll = false, refreshKey }: { fetchAl
                     <TableHead className="hidden xl:table-cell">Approver Role</TableHead>
                     <TableHead className="hidden sm:table-cell">Request Date</TableHead>
                     <TableHead className="hidden sm:table-cell">Priority</TableHead>
+                    <TableHead className="hidden sm:table-cell">Site</TableHead>
                     <TableHead>Assets</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -278,6 +281,7 @@ export const IssueRequestsManager = ({ fetchAll = false, refreshKey }: { fetchAl
                       <TableCell className="hidden xl:table-cell">{request.approverRole ?? ''}</TableCell>
                       <TableCell className="hidden sm:table-cell">{request.requestDate ? new Date(request.requestDate).toLocaleDateString() : "N/A"}</TableCell>
                       <TableCell className="hidden sm:table-cell">{request.priority ?? ''}</TableCell>
+                      <TableCell className="hidden sm:table-cell">{request.siteName || request.siteId || '-'}</TableCell>
                       <TableCell>
                         <button
                           className="bg-blue-100 text-blue-900 px-2 py-1 rounded text-xs"
@@ -336,6 +340,7 @@ export const IssueRequestsManager = ({ fetchAll = false, refreshKey }: { fetchAl
                     <TableHead className="hidden lg:table-cell">Issued By</TableHead>
                     <TableHead className="hidden sm:table-cell">Request Date</TableHead>
                     <TableHead className="hidden sm:table-cell">Priority</TableHead>
+                    <TableHead className="hidden sm:table-cell">Site</TableHead>
                     <TableHead>Assets</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -351,6 +356,7 @@ export const IssueRequestsManager = ({ fetchAll = false, refreshKey }: { fetchAl
                       <TableCell className="hidden lg:table-cell">{request.issuedBy ?? ''}</TableCell>
                       <TableCell className="hidden sm:table-cell">{request.requestDate ? new Date(request.requestDate).toLocaleDateString() : "N/A"}</TableCell>
                       <TableCell className="hidden sm:table-cell">{request.priority ?? ''}</TableCell>
+                      <TableCell className="hidden sm:table-cell">{request.siteName || request.siteId || '-'}</TableCell>
                       <TableCell>
                         <button
                           className="bg-blue-100 text-blue-900 px-2 py-1 rounded text-xs"

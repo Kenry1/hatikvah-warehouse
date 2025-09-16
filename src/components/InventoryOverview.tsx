@@ -20,6 +20,7 @@ interface InventoryOverviewProps {
   categoryFilter: string;
   setCategoryFilter: (category: string) => void;
   onRestock?: (itemId: string, addQuantity: number) => Promise<void> | void;
+  onReduceStock?: (itemId: string, reduceQuantity: number) => Promise<void> | void;
   onUnitChange?: (itemId: string, newUnit: string) => Promise<void> | void;
   onLoadMore?: () => Promise<void> | void;
   hasMore?: boolean;
@@ -33,6 +34,7 @@ export const InventoryOverview = ({
   categoryFilter, 
   setCategoryFilter,
   onRestock,
+  onReduceStock,
   onUnitChange,
   onCategoryChange,
   onDelete,
@@ -45,20 +47,21 @@ export const InventoryOverview = ({
   const [unitEdit, setUnitEdit] = useState<Record<string, string>>({});
   const sentinelRef = useRef<HTMLDivElement | null>(null);
 
-  // Infinite scroll: observe sentinel and call onLoadMore when visible
+  // NEW: pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 10;
+
+  // Infinite scroll disabled when using pagination
   useEffect(() => {
     if (!onLoadMore || !hasMore) return;
-    const el = sentinelRef.current;
-    if (!el) return;
-    const io = new IntersectionObserver((entries) => {
-      const first = entries[0];
-      if (first.isIntersecting && hasMore && !loadingMore) {
-        onLoadMore();
-      }
-    });
-    io.observe(el);
-    return () => io.disconnect();
-  }, [onLoadMore, hasMore, loadingMore]);
+    // Disable infinite scroll since we now paginate locally
+    return;
+  }, [onLoadMore, hasMore]);
+
+  // Reset page on filter/search/data changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, categoryFilter, statusFilter, data.length]);
 
   // Filter data based on search and filters
   const filteredData = data.filter(item => {
@@ -79,6 +82,21 @@ export const InventoryOverview = ({
     
     return matchesSearch && matchesCategory && matchesStatus;
   });
+
+  // NEW: sort alphabetically by itemName (case-insensitive)
+  const sortedData = [...filteredData].sort((a, b) => {
+    const an = (a.itemName || '').toString().toLowerCase();
+    const bn = (b.itemName || '').toString().toLowerCase();
+    return an.localeCompare(bn);
+  });
+
+  // NEW: paginate
+  const totalItems = sortedData.length;
+  const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
+  const clampedPage = Math.min(Math.max(1, currentPage), totalPages);
+  const startIndex = (clampedPage - 1) * pageSize;
+  const endIndex = Math.min(startIndex + pageSize, totalItems);
+  const pageData = sortedData.slice(startIndex, endIndex);
 
   const getStockStatus = (item: InventoryRow) => {
     if (item.quantity === 0) {
@@ -166,14 +184,14 @@ export const InventoryOverview = ({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredData.length === 0 ? (
+              {sortedData.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                  <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
                     No items found matching your criteria.
                   </TableCell>
                 </TableRow>
               ) : (
-                filteredData.map((item) => {
+                pageData.map((item) => {
                   const key = item.itemCode || `${item.itemName}-${item.category}-${item.unit}-${item.reorderLevel}`;
                   const handleRestock = async () => {
                     const qty = parseInt(restockQty[key] || "", 10);
@@ -182,6 +200,25 @@ export const InventoryOverview = ({
                         await onRestock(String(item.id), qty);
                       }
                       item.quantity = (Number(item.quantity) || 0) + qty;
+                      if (typeof item.availableQuantity === 'number') {
+                        item.availableQuantity = (Number(item.availableQuantity) || 0) + qty;
+                      }
+                      setRestockQty(prev => ({ ...prev, [key]: "" }));
+                    }
+                  };
+                  const handleReduce = async () => {
+                    const qty = parseInt(restockQty[key] || "", 10);
+                    if (!isNaN(qty) && qty > 0) {
+                      const currentQty = Number(item.quantity) || 0;
+                      const reduceBy = Math.min(qty, currentQty);
+                      if (reduceBy <= 0) return;
+                      if (onReduceStock && item.id) {
+                        await onReduceStock(String(item.id), reduceBy);
+                      }
+                      item.quantity = currentQty - reduceBy;
+                      if (typeof item.availableQuantity === 'number') {
+                        item.availableQuantity = Math.max(0, (Number(item.availableQuantity) || 0) - reduceBy);
+                      }
                       setRestockQty(prev => ({ ...prev, [key]: "" }));
                     }
                   };
@@ -241,7 +278,7 @@ export const InventoryOverview = ({
                             value={restockQty[key] || ""}
                             onChange={e => setRestockQty(prev => ({ ...prev, [key]: e.target.value }))}
                             placeholder="Qty"
-                            className="w-16"
+                            className="w-20"
                           />
                           <button
                             type="button"
@@ -249,6 +286,13 @@ export const InventoryOverview = ({
                             onClick={handleRestock}
                           >
                             Add
+                          </button>
+                          <button
+                            type="button"
+                            className="bg-amber-500 text-white px-2 py-1 rounded hover:bg-amber-600 transition-colors"
+                            onClick={handleReduce}
+                          >
+                            Reduce
                           </button>
                           <button
                             type="button"
@@ -267,8 +311,38 @@ export const InventoryOverview = ({
           </Table>
         </div>
 
-        {/* Infinite scroll sentinel and fallback button */}
-        {(onLoadMore && hasMore) && (
+        {/* Pagination Controls */}
+        {sortedData.length > 0 && (
+          <div className="mt-4 flex items-center justify-between gap-3 text-sm">
+            <div className="text-muted-foreground">
+              Showing {totalItems === 0 ? 0 : startIndex + 1}-{endIndex} of {totalItems} items.
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                className="px-3 py-1 border rounded disabled:opacity-50"
+                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                disabled={clampedPage === 1}
+              >
+                Previous
+              </button>
+              <span className="min-w-[6rem] text-center">
+                Page {clampedPage} / {totalPages}
+              </span>
+              <button
+                type="button"
+                className="px-3 py-1 border rounded disabled:opacity-50"
+                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                disabled={clampedPage === totalPages}
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        )}
+        
+        {/* Infinite scroll sentinel hidden due to pagination */}
+        {false && (onLoadMore && hasMore) && (
           <div className="flex flex-col items-center gap-3 mt-4">
             <div ref={sentinelRef} className="h-2 w-full" />
             <button
@@ -282,9 +356,6 @@ export const InventoryOverview = ({
           </div>
         )}
         
-        <div className="mt-4 text-sm text-muted-foreground">
-          Showing {filteredData.length} of {data.length} items.
-        </div>
       </CardContent>
     </Card>
   );

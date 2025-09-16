@@ -11,7 +11,8 @@ import { AddStockForm } from "../AddStockForm";
 import { AuditTrail } from "../AuditTrail";
 import { mockInventoryData } from "../../lib/mockData";
 import { db } from "../../lib/firebase";
-import { collection, getDocs, doc, updateDoc, increment, query, orderBy, limit, startAfter, DocumentSnapshot } from "firebase/firestore";
+import { collection, getDocs, doc, updateDoc, increment, query, orderBy, limit, startAfter, DocumentSnapshot, addDoc, Timestamp } from "firebase/firestore";
+import { IssueStockForm, IssueStockPayload } from "../IssueStockForm";
 
 export const WarehouseDashboard = () => {
   // Requests refresh trigger for IssueRequestsManager
@@ -143,6 +144,30 @@ export const WarehouseDashboard = () => {
     }
   };
 
+  // NEW: Persist stock reduction to Firestore and update local state
+  const handleReduceStock = async (itemId: string, reduceQuantity: number) => {
+    try {
+      if (reduceQuantity <= 0) return;
+      // Find current item to clamp
+      const current = inventoryData.find((it: any) => String(it.id) === String(itemId));
+      const currentQty = Number(current?.quantity) || 0;
+      const clamp = Math.min(reduceQuantity, currentQty);
+      if (clamp <= 0) return;
+      const ref = doc(db, "solar_warehouse", itemId);
+      await updateDoc(ref, {
+        availableQuantity: increment(-clamp),
+        quantity: increment(-clamp),
+      });
+      setInventoryData(prev => prev.map((it: any) =>
+        String(it.id) === String(itemId)
+          ? { ...it, quantity: Math.max(0, (Number(it.quantity) || 0) - clamp), availableQuantity: Math.max(0, (Number((it as any).availableQuantity) || 0) - clamp) }
+          : it
+      ));
+    } catch (err) {
+      console.error("Error reducing stock in Firestore:", err);
+    }
+  };
+
   // Persist unit change to Firestore and update local state
   const handleUnitChange = async (itemId: string, newUnit: string) => {
     try {
@@ -167,6 +192,46 @@ export const WarehouseDashboard = () => {
     return sum + (quantity * unitPrice);
   }, 0);
   const pendingRequests = pendingRequestCount;
+
+  // NEW: Issue stock handler
+  const handleIssueStock = async ({ materialId, siteName, requestedBy, quantity, notes }: IssueStockPayload) => {
+    // Clamp issuance to available stock
+    const current = inventoryData.find((it: any) => String(it.id) === String(materialId));
+    const currentQty = Number(current?.quantity) || 0;
+    const issueQty = Math.min(quantity, currentQty);
+    if (issueQty <= 0) return;
+
+    // 1) Decrement warehouse quantities
+    const ref = doc(db, "solar_warehouse", materialId);
+    await updateDoc(ref, {
+      availableQuantity: increment(-issueQty),
+      quantity: increment(-issueQty),
+    });
+
+    // 2) Create a material_requests entry marked as issued for audit consistency
+    const req = {
+      siteName,
+      requestedByUsername: requestedBy,
+      status: "issued",
+      items: [{ materialId, quantity: issueQty }],
+      issuedBy: (await import("@/contexts/AuthContext")).useAuth().user?.username || "",
+      companyId: (await import("@/contexts/AuthContext")).useAuth().user?.companyId || "",
+      createdAt: Timestamp.now(),
+      fulfilledDate: Timestamp.now(),
+      notes: notes || "",
+    };
+    await addDoc(collection(db, "material_requests"), req);
+
+    // 3) Update local state
+    setInventoryData(prev => prev.map((it: any) =>
+      String(it.id) === String(materialId)
+        ? { ...it, quantity: Math.max(0, (Number(it.quantity) || 0) - issueQty), availableQuantity: Math.max(0, (Number((it as any).availableQuantity) || 0) - issueQty) }
+        : it
+    ));
+
+    // 4) Notify listeners (KPI, requests tables)
+    window.dispatchEvent(new CustomEvent('materialRequests:refresh'));
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -264,6 +329,7 @@ export const WarehouseDashboard = () => {
               categoryFilter={categoryFilter}
               setCategoryFilter={setCategoryFilter}
               onRestock={handleRestock}
+              onReduceStock={handleReduceStock}
               onUnitChange={handleUnitChange}
               onCategoryChange={handleCategoryChange}
               onDelete={handleDelete}
@@ -279,6 +345,8 @@ export const WarehouseDashboard = () => {
 
           <TabsContent value="add-stock">
             <AddStockForm onStockAdded={handleStockAdded} />
+            <div className="h-6" />
+            <IssueStockForm materials={inventoryData.map(it => ({ id: it.id, itemName: it.itemName, itemCode: it.itemCode, unit: it.unit, quantity: it.quantity }))} onIssue={handleIssueStock} />
           </TabsContent>
 
           <TabsContent value="audit">
