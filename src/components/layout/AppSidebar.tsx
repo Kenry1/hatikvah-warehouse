@@ -49,7 +49,8 @@ import {
   Monitor,
   BookOpen,
   Cog,
-  ChevronDown
+  ChevronDown,
+  Bot
 } from 'lucide-react';
 import { UserRole } from '@/types/auth';
 import { Badge } from '@/components/ui/badge';
@@ -209,6 +210,7 @@ const getNavigationStructure = (role: UserRole): NavigationGroup[] => {
         items: [
           { title: 'Material Requests', url: '/material-requests', icon: Package, description: 'Request materials and supplies' },
           { title: 'Site Documentation', url: '/site-documentation', icon: FileText, description: 'Technical drawings and specs' },
+          { title: 'Assistant', url: '/assistant', icon: Bot, description: 'AI assistant for material requests' },
         ]
       }
     ],
@@ -236,6 +238,7 @@ const getNavigationStructure = (role: UserRole): NavigationGroup[] => {
         title: 'Administration',
         items: [
           { title: 'Analytics Dashboard', url: '/analytics', icon: BarChart3, description: 'System-wide analytics and metrics' },
+          { title: 'Assistant Analytics', url: '/assistant/analytics', icon: Bot, description: 'AI assistant usage metrics' },
           { title: 'System Administration', url: '/admin', icon: Settings, description: 'Global system configuration' },
           { title: 'User Audit', url: '/user-audit', icon: Search, description: 'User activity and logs' },
         ]

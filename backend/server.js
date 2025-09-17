@@ -4,6 +4,8 @@ const cors = require('cors');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const { googleDriveService } = require('./services/googleDriveService');
+const { GoogleGenerativeAI } = require('@google/generative-ai');
+require('dotenv').config();
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -59,6 +61,72 @@ const upload = multer({
 // Routes
 app.get('/api/health', (req, res) => {
   res.json({ status: 'OK', message: 'Site Documentation Backend is running' });
+});
+
+// Gemini model setup (reused)
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-1.5-flash-latest';
+let genAIInstance = null;
+if (GEMINI_API_KEY) {
+  try { genAIInstance = new GoogleGenerativeAI(GEMINI_API_KEY); } catch (e) { console.error('Failed to init Gemini client', e); }
+}
+
+function ensureModel() {
+  if (!GEMINI_API_KEY) throw new Error('GEMINI_API_KEY not configured');
+  if (!genAIInstance) genAIInstance = new GoogleGenerativeAI(GEMINI_API_KEY);
+  return genAIInstance.getGenerativeModel({ model: GEMINI_MODEL });
+}
+
+// AI Assistant Chat Route
+app.post('/api/assistant/chat', async (req, res) => {
+  try {
+    const { messages } = req.body || {};
+    const userId = req.header('X-User-Id') || null;
+    if (!Array.isArray(messages) || !messages.length) {
+      return res.status(400).json({ error: 'messages array required' });
+    }
+    const model = ensureModel();
+    const systemPrompt = `You are a material request assistant. Output concise, helpful replies. If the user is ready to submit or has provided site, priority and at least one item, include a JSON block: {"action":"create_request","siteName":"...","priority":"...","items":[{"materialName":"...","quantity":1}],"notes":"..."}`;
+    const history = messages.map(m => `${m.role.toUpperCase()}: ${m.content}`).join('\n');
+    const finalInput = systemPrompt + '\n' + history;
+    const result = await model.generateContent(finalInput);
+    const text = result.response.text();
+    let action = null;
+    const jsonMatch = text.match(/\{[\s\S]*?"action"[\s\S]*?\}/);
+    if (jsonMatch) { try { action = JSON.parse(jsonMatch[0]); } catch {} }
+    res.json({ reply: text, action, userId, model: GEMINI_MODEL });
+  } catch (e) {
+    console.error('Gemini chat error', e);
+    res.status(500).json({ error: 'Gemini request failed', details: e.message });
+  }
+});
+
+// Streaming variant
+app.post('/api/assistant/chat/stream', async (req, res) => {
+  try {
+    const { messages } = req.body || {};
+    if (!Array.isArray(messages) || !messages.length) {
+      return res.status(400).json({ error: 'messages array required' });
+    }
+    const model = ensureModel();
+    const systemPrompt = `You are a material request assistant. Stream natural language. If ready to submit, include JSON action: {"action":"create_request",...}`;
+    const history = messages.map(m => `${m.role.toUpperCase()}: ${m.content}`).join('\n');
+    const finalInput = systemPrompt + '\n' + history;
+    res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8', 'Transfer-Encoding': 'chunked' });
+    const result = await model.generateContentStream(finalInput);
+    let full = '';
+    for await (const chunk of result.stream) {
+      const part = chunk.text();
+      full += part;
+      res.write(part);
+    }
+    const jsonMatch = full.match(/\{[\s\S]*?"action"[\s\S]*?\}/);
+    if (jsonMatch) res.write(`\n[ACTION_JSON]${jsonMatch[0]}[/ACTION_JSON]`);
+    res.end();
+  } catch (e) {
+    console.error('Streaming chat error', e);
+    if (!res.headersSent) res.status(500).json({ error: 'stream failed', details: e.message }); else res.end('\n[ERROR]');
+  }
 });
 
 app.post('/api/upload', upload.single('file'), async (req, res) => {

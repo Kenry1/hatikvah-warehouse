@@ -19,6 +19,8 @@ import IncomingTickets from "./pages/IncomingTickets"; // Import IncomingTickets
 import AssetInventory from "./pages/AssetInventory"; // Import AssetInventory component
 import SafetyReportsViewer from "./pages/sreportsv"; // Import the new SafetyReportsViewer component
 import SiteDocumentation from "./pages/SiteDocumentation";
+import Assistant from "./pages/Assistant";
+import AssistantAnalytics from "./pages/AssistantAnalytics";
 import { RouteGuard } from "./components/navigation/RouteGuard";
 import { DashboardLayout } from "./components/layout/DashboardLayout";
 import ProjectTrackingPage from "./pages/ProjectTrackingPage";
@@ -91,6 +93,7 @@ const App = () => (
             <Route path="/material-creation" element={<Dashboard />} />
             <Route path="/approved-requests" element={<Dashboard />} />
             <Route path="/analytics" element={<Dashboard />} />
+            <Route path="/assistant/analytics" element={<AssistantAnalytics />} />
             <Route path="/admin" element={<Dashboard />} />
             <Route path="/supplier-management" element={<Dashboard />} />
             <Route path="/supply-rates" element={<Dashboard />} />
@@ -103,6 +106,8 @@ const App = () => (
             {/* Site Documentation canonical route */}
             <Route path="/site-documentation" element={<SiteDocumentation />} />
             <Route path="/site-documentation/*" element={<SiteDocumentation />} />
+            {/* Assistant AI chatbot (Phase 1 placeholder) */}
+            <Route path="/assistant" element={<Assistant />} />
             {/* Legacy / short aliases redirect to canonical */}
             <Route path="/site-docs" element={<Navigate to="/site-documentation" replace />} />
             <Route path="/site-docs/*" element={<Navigate to="/site-documentation" replace />} />
